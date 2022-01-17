@@ -18,14 +18,20 @@ def check_if_arbitrage_oportunity():
 
 
 def run_bot():
+    """
+    The bot runs an epoch every time bot_config["time_between_epoch_due_checks"] are mined.
+    This is checked by epoch_due()
+    """
     block_number = get_latest_block_number()
-    epoch_start_time = time.time()
+    last_recorded_time = time.time()
 
     while True:
         if epoch_due(block_number):
-            print(f"Starting block after waiting for {time.time() - epoch_start_time}s")
+            print(
+                f"Starting epoch after waiting for {time.time() - last_recorded_time}s"
+            )
             run_epoch()
-            epoch_start_time = time.time()
+            last_recorded_time = time.time()
         time.sleep(bot_config["time_between_epoch_due_checks"])
 
 

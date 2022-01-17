@@ -3,9 +3,7 @@ from brownie import accounts, network, config, Contract
 
 NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS = ["development", "ganache"]
 LOCAL_BLOCKCHAIN_ENVIRONMENTS = NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS + [
-    "mainnet-fork",
-    "fantom-fork",
-    "matic-fork",
+    "ftm-main-fork",
 ]
 DECIMALS = 18
 INITIAL_PRICE_FEED_VALUE = 3300 * 10 ** 18

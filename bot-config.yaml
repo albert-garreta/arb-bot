@@ -2,3 +2,9 @@
 # be mined as of Jan 2022
 blocks_to_wait: 10
 time_between_epoch_due_checks: 30
+list_tokens:
+  - ftm
+  - mim
+list_exchanges:
+  - spookyswap
+  - spiritswap

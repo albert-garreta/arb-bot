@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.7.0;
+pragma solidity ^0.8.0;
 
 import "@geist-finance/contracts/flashloan/base/FlashLoanReceiverBase.sol";
 import "@geist-finance/contracts/interfaces/ILendingPool.sol";
 import "@geist-finance/contracts/interfaces/ILendingPoolAddressesProvider.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "./SwapperV3.sol";
 
 /** 
     !!!
@@ -13,10 +14,15 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
     exposed to a 'griefing' attack, where the stored funds are used by an attacker.
     !!!
  */
-contract FlashReceiver is FlashLoanReceiverBase {
-    /**
-        This function is called after your contract has received the flash loaned amount
-     */
+contract FlashReceiver is FlashLoanReceiverBase, SwapperV3 {
+    Swapper public swapper;
+
+    constructor(
+        address[] memory _token_addresses,
+        ISwapRouter _swap_router_address
+    ) SwapperV3(_token_addresses, _swap_router_address) {}
+
+    // This function is called after your contract has received the flash loaned amount
     function executeOperation(
         address[] calldata assets,
         uint256[] calldata amounts,
@@ -28,6 +34,8 @@ contract FlashReceiver is FlashLoanReceiverBase {
         // This contract now has the funds requested.
         // Your logic goes here.
         //
+
+        // swapExactInputSingle(***);
 
         // At the end of your logic above, this contract owes
         // the flashloaned amounts + premiums.
