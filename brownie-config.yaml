@@ -13,6 +13,7 @@ compiler:
       - "@openzeppelin=OpenZeppelin/openzeppelin-contracts@4.4.2"
       - "@uniswap-periphery=Uniswap/v3-periphery@1.3.0"
 networks:
+  default: mainnet-fork
   kovan:
     weth_address: "0xd0A1E359811322d97991E03f863a0C30C2cF029C"
     usdt_address: "0x13512979ade267ab5100878e2e0f485b568328a4"

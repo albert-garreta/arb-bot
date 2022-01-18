@@ -1,4 +1,4 @@
-from scripts.deploy import deploy_swapper_v3
+from scripts.deploy_swapper_v3 import deploy_swapper_v3
 from scripts.utils import (
     get_account,
     get_balances,
@@ -38,12 +38,18 @@ def test_swap_exact_input_single():
     print("Approved")
 
     print("Swapping...")
-    tx = example_swap.swapExactInputSingle(weth_amount_in, {"from": account})
+    tx = example_swap.swapExactInputSingle(
+        weth, usdt, weth_amount_in, {"from": account}
+    )
     tx.wait(1)
     print("Swapped!")
 
     balances_after = get_balances(account, [weth, usdt])
-    usdt_before = balances_before[0]
+    usdt_before = balances_before[1]
     usdt_after = balances_after[1]
     difference = usdt_after - usdt_before
-    assert difference > 3000 * weth_amount_in and difference < 4000 * weth_amount_in
+    # the 10^12 is because usdt has 6 decimals while weth has 18
+    assert (
+        difference > (3000 * weth_amount_in) / 10 ** 12
+        and (difference < 4000 * weth_amount_in) / 10 ** 12
+    )

@@ -19,13 +19,19 @@ import "./SwapperV3.sol";
     exposed to a 'griefing' attack, where the stored funds are used by an attacker.
     !!!
  */
-contract FlashReceiver is SwapperV3, FlashLoanReceiverBase {
-    SwapperV3 public swapper;
+contract Actor is SwapperV3, FlashLoanReceiverBase {
+    // SwapperV3 public swapper;
 
     constructor(
         address[] memory _token_addresses,
-        ISwapRouter _swap_router_address
-    ) SwapperV3(_token_addresses, _swap_router_address) {}
+        address _swap_router_address,
+        address _lendingPoolAddressesProviderAddress
+    )
+        SwapperV3(_swap_router_address)
+        FlashLoanReceiverBase(
+            ILendingPoolAddressesProvider(_lendingPoolAddressesProviderAddress)
+        )
+    {}
 
     // This function is called after your contract has received the flash loaned amount
     function executeOperation(
@@ -40,8 +46,6 @@ contract FlashReceiver is SwapperV3, FlashLoanReceiverBase {
         // Your logic goes here.
         //
 
-        // swapExactInputSingle(***);
-
         // At the end of your logic above, this contract owes
         // the flashloaned amounts + premiums.
         // Therefore ensure your contract has enough to repay
@@ -49,28 +53,24 @@ contract FlashReceiver is SwapperV3, FlashLoanReceiverBase {
 
         // Approve the LendingPool contract allowance to *pull* the owed amount
         for (uint256 i = 0; i < assets.length; i++) {
-            uint256 amountOwing = amounts[i].add(premiums[i]);
+            uint256 amountOwing = amounts[i] + premiums[i];
             IERC20(assets[i]).approve(address(LENDING_POOL), amountOwing);
         }
 
         return true;
     }
 
-    function myFlashLoanCall() public {
+    function executeFlashLoanAndAct(
+        address[] memory _tokenAddresses,
+        uint256[] memory amounts
+    ) public {
         address receiverAddress = address(this);
 
-        address[] memory assets = new address[](2);
-        assets[0] = address(INSERT_ASSET_ONE_ADDRESS);
-        assets[1] = address(INSERT_ASSET_TWO_ADDRESS);
-
-        uint256[] memory amounts = new uint256[](2);
-        amounts[0] = INSERT_ASSET_ONE_AMOUNT;
-        amounts[1] = INSERT_ASSET_TWO_AMOUNT;
-
         // 0 = no debt, 1 = stable, 2 = variable
-        uint256[] memory modes = new uint256[](2);
-        modes[0] = INSERT_ASSET_ONE_MODE;
-        modes[1] = INSERT_ASSET_TWO_MODE;
+        uint256[] memory modes = new uint256[](amounts.length);
+        for (uint256 i = 0; i < amounts.length; i++) {
+            modes[i] = 0;
+        }
 
         address onBehalfOf = address(this);
         bytes memory params = "";
@@ -78,7 +78,7 @@ contract FlashReceiver is SwapperV3, FlashLoanReceiverBase {
 
         LENDING_POOL.flashLoan(
             receiverAddress,
-            assets,
+            _tokenAddresses,
             amounts,
             modes,
             onBehalfOf,

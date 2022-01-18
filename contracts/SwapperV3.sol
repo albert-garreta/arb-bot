@@ -6,6 +6,7 @@ pragma abicoder v2;
 
 import "./uniswap-v3/ISwapRouter.sol";
 import "./uniswap-v3/TransferHelper.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract SwapperV3 {
 
@@ -13,15 +14,13 @@ contract SwapperV3 {
     // to be read-only, but assignable in the constructor.
     // The value will be stored directly in the code.
     ISwapRouter public immutable swapRouter;
-    address[] public token_addresses;
 
     // For this example, we will set the pool fee to 0.3%.
     // Constant modifier: Disallows assignment (except initialisation),
     // does not occupy storage slot.
     uint24 public constant poolFee = 3000;
 
-    constructor(address[] memory _token_addresses, ISwapRouter _swap_router_address) {
-        token_addresses = _token_addresses;
+    constructor(address _swap_router_address) {
         swapRouter = ISwapRouter(_swap_router_address);
     }
 
@@ -31,27 +30,30 @@ contract SwapperV3 {
     /// @param _amountIn The exact amount of DAI that will be swapped for WETH9.
     /// @return amountOut The amount of WETH9 received.
     function swapExactInputSingle(
-        uint256 _amountIn
-    ) external returns (uint256 amountOut) {
+        address _tokenInAddress, 
+        address _tokenOutAddress, 
+        uint256 _amountIn) 
+    external returns (uint256 amountOut) 
+    {
         // @mtden: eventyally I will want to have a whole list and pass the 
         // addresses or names of the tokens to swap as arguments.
         // This allows to deploy before the arbitrage oportunity
         // saving time, since once the abr appears you have to be quick
-        address tokenIn = token_addresses[0];
-        address tokenOut = token_addresses[1];
+        address tokenInAddress = _tokenInAddress;
+        address tokenOutAddress = _tokenOutAddress;
 
         // msg.sender must approve the following transfer
 
         // Transfer the specified amount of DAI to this contract.
         TransferHelper.safeTransferFrom(
-            tokenIn,
+            tokenInAddress,
             msg.sender,
             address(this),
             _amountIn
         );
 
         // Approve the router to spend DAI.
-        TransferHelper.safeApprove(tokenIn, address(swapRouter), _amountIn);
+        TransferHelper.safeApprove(tokenInAddress, address(swapRouter), _amountIn);
 
         // Naively set amountOutMinimum to 0.
         // In production, use an oracle or other data source to choose
@@ -60,8 +62,8 @@ contract SwapperV3 {
         // our exact input amount.
         ISwapRouter.ExactInputSingleParams memory params = ISwapRouter
             .ExactInputSingleParams({
-                tokenIn: tokenIn,
-                tokenOut: tokenOut,
+                tokenIn: tokenInAddress,
+                tokenOut: tokenOutAddress,
                 fee: poolFee,
                 recipient: msg.sender,
                 deadline: block.timestamp,
