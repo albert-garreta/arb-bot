@@ -22,6 +22,11 @@ import "./SwapperV3.sol";
 contract Actor is SwapperV3, FlashLoanReceiverBase {
     // SwapperV3 public swapper;
 
+    // This is currently used only for testing purposes to check
+    // the loan ammount received during the flash loan
+    uint256[] public amountsLoanReceived;
+    uint256[] public preLoanBalances;
+
     constructor(
         address[] memory _token_addresses,
         address _swap_router_address,
@@ -45,7 +50,11 @@ contract Actor is SwapperV3, FlashLoanReceiverBase {
         // This contract now has the funds requested.
         // Your logic goes here.
         //
-
+        for (uint256 i = 0; i < amounts.length; i++) {
+            amountsLoanReceived.push(
+                IERC20(assets[i]).balanceOf(initiator) - preLoanBalances[i]
+            );
+        }
         // At the end of your logic above, this contract owes
         // the flashloaned amounts + premiums.
         // Therefore ensure your contract has enough to repay
@@ -60,7 +69,12 @@ contract Actor is SwapperV3, FlashLoanReceiverBase {
         return true;
     }
 
-    function executeFlashLoanAndAct(
+    // REMEMBER:
+    // If you flash 100 AAVE, the 9bps fee is 0.09 AAVE
+    // If you flash 500,000 DAI, the 9bps fee is 450 DAI
+    // If you flash 10,000 LINK, the 9bps fee is 45 LINK
+    // All of these fees need to be sitting ON THIS CONTRACT before you execute this batch flash.
+    function requestFlashLoanAndAct(
         address[] memory _tokenAddresses,
         uint256[] memory amounts
     ) public {
@@ -75,6 +89,12 @@ contract Actor is SwapperV3, FlashLoanReceiverBase {
         address onBehalfOf = address(this);
         bytes memory params = "";
         uint16 referralCode = 0;
+
+        // just for testing purposes currently
+        for (uint256 i = 0; i < amounts.length; i++) {
+            IERC20 token = IERC20(_tokenAddresses[i]);
+            preLoanBalances.push(token.balanceOf(address(this)));
+        }
 
         LENDING_POOL.flashLoan(
             receiverAddress,

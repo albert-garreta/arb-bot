@@ -1,7 +1,8 @@
 from scripts.deploy_swapper_v3 import deploy_swapper_v3
 from scripts.utils import (
     get_account,
-    get_balances,
+    get_wallet_balances,
+    deposit_eth_into_weth,
     LOCAL_BLOCKCHAIN_ENVIRONMENTS,
     NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS,
 )
@@ -18,19 +19,12 @@ def test_swap_exact_input_single():
     weth = interface.IWeth(weth_address)
     usdt = interface.IERC20(usdt_address)
 
-    if (
-        network.show_active()
-        in LOCAL_BLOCKCHAIN_ENVIRONMENTS + NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS
-    ):
-        print("Depositing ETH into WETH...")
-        tx = weth.deposit({"from": account, "value": Web3.toWei(0.001, "ether")})
-        tx.wait(1)
-        print("Deposit done")
+    deposit_eth_into_weth(_amount=0.001)
 
     weth_amount_in = 0.0001
     weth_amount_in = Web3.toWei(weth_amount_in, "ether")
     print(f"weth amount in {weth_amount_in}")
-    balances_before = get_balances(account, [weth, usdt])
+    balances_before = get_wallet_balances(account, [weth, usdt])
 
     print("Approving spending...")
     tx = weth.approve(example_swap, weth_amount_in, {"from": account})
@@ -44,7 +38,7 @@ def test_swap_exact_input_single():
     tx.wait(1)
     print("Swapped!")
 
-    balances_after = get_balances(account, [weth, usdt])
+    balances_after = get_wallet_balances(account, [weth, usdt])
     usdt_before = balances_before[1]
     usdt_after = balances_after[1]
     difference = usdt_after - usdt_before

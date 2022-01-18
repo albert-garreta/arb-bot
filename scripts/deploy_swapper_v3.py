@@ -7,9 +7,9 @@ def deploy_swapper_v3():
     account = get_account()
     newtork_addresses = config["networks"][network.show_active()]
     swap_router_address = newtork_addresses["swap_router_address"]
-    example_swap = SwapperV3.deploy(swap_router_address, {"from": account})
+    swapper = SwapperV3.deploy(swap_router_address, {"from": account})
     print("Deployed!")
-    return example_swap
+    return swapper
 
 
 def main():

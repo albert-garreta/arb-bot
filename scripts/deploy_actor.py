@@ -3,13 +3,25 @@ from brownie import config, network, Actor
 
 
 def deploy_actor():
-    print("Deploying SwapperV3...")
+    print("Deploying Actor...")
     account = get_account()
-    newtork_addresses = config["networks"][network.show_active()]
-    swap_router_address = newtork_addresses["swap_router_address"]
-    example_swap = Actor.deploy(swap_router_address, {"from": account})
+    network_addresses = config["networks"][network.show_active()]
+    token_addresses = [
+        network_addresses["weth_address"],
+        network_addresses["usdt_address"],
+    ]
+
+    # address[] memory _token_addresses,
+    # address _swap_router_address,
+    # address _lendingPoolAddressesProviderAddress
+    actor = Actor.deploy(
+        token_addresses,
+        network_addresses["swap_router_address"],
+        network_addresses["lending_pool_addresses_provider_address"],
+        {"from": account},
+    )
     print("Deployed!")
-    return example_swap
+    return actor
 
 
 def main():
