@@ -1,8 +1,9 @@
 from brownie import accounts, network, config, Contract
-
+from web3 import Web3
 
 NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS = ["development", "ganache"]
 LOCAL_BLOCKCHAIN_ENVIRONMENTS = NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS + [
+    "mainnet-fork",
     "ftm-main-fork",
 ]
 DECIMALS = 18
@@ -16,6 +17,19 @@ contract_name_to_contract_type = {
     # "weth_token": MockWeth,
     # "dapp_token": DappToken,
 }
+
+
+def get_balances(account, tokens, verbose=True):
+    balances = []
+    for token in tokens:
+        token_balance = token.balanceOf(account)
+        if verbose:
+            print(
+                f"{token.name()} (decimals {token.decimals()}) "
+                f"balance {round((token_balance/10**token.decimals()),8)}"
+            )
+        balances.append(token_balance)
+    return balances
 
 
 def get_account(index=None, id=None):
@@ -88,17 +102,3 @@ def deploy_mocks(decimals=DECIMALS, initial_value=INITIAL_PRICE_FEED_VALUE):
     print(f"The active network is {network.show_active()}")
     print("Deploying Mocks...")
     account = get_account()
-
-    print("Deploying Mock Price Feed...")
-    mock_price_feed = MockV3Aggregator.deploy(
-        decimals, initial_value, {"from": account}
-    )
-    print(f"Deployed to {mock_price_feed.address}")
-
-    print("Deploying Mock DAI...")
-    dai_token = MockDai.deploy({"from": account})
-    print(f"Deployed to {dai_token.address}")
-
-    print("Deploying Mock WETH")
-    weth_token = MockWeth.deploy({"from": account})
-    print(f"Deployed to {weth_token.address}")

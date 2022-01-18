@@ -4,10 +4,10 @@ pragma solidity ^0.8.0;
 //decoded in calldata, a feature used when executing a swap.
 pragma abicoder v2;
 
-import "./uniswap/ISwapRouter.sol";
-import "./uniswap/TransferHelper.sol";
+import "./uniswap-v3/ISwapRouter.sol";
+import "./uniswap-v3/TransferHelper.sol";
 
-contract ExampleSwapV3 {
+contract SwapperV3 {
 
     // Immutable modifier: State variables can be marked immutable which causes them
     // to be read-only, but assignable in the constructor.
