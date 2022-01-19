@@ -2,7 +2,7 @@ from scripts.utils import get_account, get_token_addresses, TOKEN_NAMES
 from brownie import config, network, Actor
 
 
-def deploy_actor():
+def deploy_actor(_swapper_version="V2"):
     print("Deploying Actor...")
     account = get_account()
     network_addresses = config["networks"][network.show_active()]
@@ -11,7 +11,7 @@ def deploy_actor():
     # address _swap_router_address,
     # address _lendingPoolAddressesProviderAddress
     actor = Actor.deploy(
-        network_addresses["swap_router_address"],
+        network_addresses[f"swap_router_{_swapper_version}_address"],
         network_addresses["lending_pool_addresses_provider_address"],
         {"from": account},
     )

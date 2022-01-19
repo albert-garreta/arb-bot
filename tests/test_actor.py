@@ -1,7 +1,9 @@
+from webbrowser import get
 from brownie import interface
 from web3 import Web3
 import math
 from scripts.deploy_actor import deploy_actor
+from testconf import VERSION
 from scripts.utils import (
     get_account,
     get_token_addresses,
@@ -20,14 +22,13 @@ def test_actor():
     account = get_account()
     token_addresses = get_token_addresses(TOKEN_NAMES)
     actor = deploy_actor()
-    weth = interface.IWeth
+    weth = interface.IWeth(token_addresses[0])
 
     initial_deposit = Web3.toWei(DEPOSIT_AMOUNT_ETH, "ether")  # for fees
     deposit_eth_into_weth(initial_deposit)
     # for information purposes only, prints the weth balance of account
     _ = get_wallet_balances(account, [weth], verbose=True)
 
-    test_deposit_eth_into_weth()
     # REMEMBER:
     # If you flash 100 AAVE, the 9bps fee is 0.09 AAVE
     # If you flash 500,000 DAI, the 9bps fee is 450 DAI
@@ -39,6 +40,7 @@ def test_actor():
     tx = weth.approve(actor.address, wei_to_transfer, {"from": account})
     tx.wait(1)
     print("Approved")
+
     print("Transferring weth to Actor...")
     tx = weth.transferFrom(
         account.address, actor.address, wei_to_transfer, {"from": account}
@@ -50,30 +52,25 @@ def test_actor():
         f"WETH balance of Actor contract: {Web3.fromWei(weth_balance_of_Actor, 'ether')}"
     )
 
-    actor = test_weth_transfer_to_Actor()
-    amounts = [Web3.toWei(ETH_TO_BORROW, "ether")]
-
     print("Requesting flash loan and acting...")
     tx = actor.requestFlashLoanAndAct(
         [token_addresses[0]],
-        amounts,
+        [Web3.toWei(ETH_TO_BORROW, "ether")],
         {"from": account},
     )
     tx.wait(1)
     print("Success!")
-
     # ! In brownie access to state arrays  are done with (index).
     # ! Access to state variables are done with ()
     pre_loan_balance = actor.preLoanBalances(0)
     print(f"Pre loan token balance: {Web3.fromWei(pre_loan_balance, 'ether')}")
     # assert pre_loan_balance == initial_deposit
-
     amount_flashloaned = actor.amountsLoanReceived(0)
     print(
         f"Amount of loan received during the flash loan: "
         f"{Web3.fromWei(amount_flashloaned,'ether')}"
     )
-    assert amount_flashloaned == amounts[0]
+    assert amount_flashloaned == Web3.toWei(ETH_TO_BORROW, "ether")
 
     weth_final_owner_balance = weth.balanceOf(account, {"from": account})
     weth_final_actor_balance = weth.balanceOf(actor.address, {"from": account})

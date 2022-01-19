@@ -6,9 +6,10 @@ pragma abicoder v2;
 
 import "./uniswap-v3/ISwapRouter.sol";
 import "./uniswap-v3/TransferHelper.sol";
+import "../interfaces/ISwapper.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
-contract SwapperV3 {
+contract SwapperV3 is ISwapper {
 
     // Immutable modifier: State variables can be marked immutable which causes them
     // to be read-only, but assignable in the constructor.
@@ -29,31 +30,25 @@ contract SwapperV3 {
     /// @dev The calling address must approve this contract to spend at least `amountIn` worth of its DAI for this function to succeed.
     /// @param _amountIn The exact amount of DAI that will be swapped for WETH9.
     /// @return amountOut The amount of WETH9 received.
-    function swapExactInputSingle(
+    function swapExactTokensForTokens(
         address _tokenInAddress, 
         address _tokenOutAddress, 
-        uint256 _amountIn) 
-    external returns (uint256 amountOut) 
+        uint256 _amountIn, 
+        uint256 _minAmountOut) 
+    external returns (uint256) 
     {
-        // @mtden: eventyally I will want to have a whole list and pass the 
-        // addresses or names of the tokens to swap as arguments.
-        // This allows to deploy before the arbitrage oportunity
-        // saving time, since once the abr appears you have to be quick
-        address tokenInAddress = _tokenInAddress;
-        address tokenOutAddress = _tokenOutAddress;
-
         // msg.sender must approve the following transfer
 
         // Transfer the specified amount of DAI to this contract.
         TransferHelper.safeTransferFrom(
-            tokenInAddress,
+            _tokenInAddress,
             msg.sender,
             address(this),
             _amountIn
         );
 
         // Approve the router to spend DAI.
-        TransferHelper.safeApprove(tokenInAddress, address(swapRouter), _amountIn);
+        TransferHelper.safeApprove(_tokenInAddress, address(swapRouter), _amountIn);
 
         // Naively set amountOutMinimum to 0.
         // In production, use an oracle or other data source to choose
@@ -62,19 +57,20 @@ contract SwapperV3 {
         // our exact input amount.
         ISwapRouter.ExactInputSingleParams memory params = ISwapRouter
             .ExactInputSingleParams({
-                tokenIn: tokenInAddress,
-                tokenOut: tokenOutAddress,
+                tokenIn: _tokenInAddress,
+                tokenOut: _tokenOutAddress,
                 fee: poolFee,
                 recipient: msg.sender,
                 deadline: block.timestamp,
                 amountIn: _amountIn,
                 // we are setting to zero, but this is a significant risk in production. For a real deployment, this value should be calculated using our SDK or an onchain price oracle - this helps protect against getting an unusually bad price for a trade due to a front running sandwich or another type of price manipulation
-                amountOutMinimum: 0,
+                amountOutMinimum: _minAmountOut,
                 //  We set this to zero - which makes this parameter inactive. In production, this value can be used to set the limit for the price the swap will push the pool to, which can help protect against price impact or for setting up logic in a variety of price-relevant mechanisms.
                 sqrtPriceLimitX96: 0 
             });
 
         // The call to `exactInputSingle` executes the swap.
-        amountOut = swapRouter.exactInputSingle(params);
+        uint256 amountOut = swapRouter.exactInputSingle(params);
+        return amountOut;
     }
 }
