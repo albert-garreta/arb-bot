@@ -9,6 +9,14 @@ LOCAL_BLOCKCHAIN_ENVIRONMENTS = NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS + [
 DECIMALS = 18
 INITIAL_PRICE_FEED_VALUE = 3300 * 10 ** 18
 
+# So far used for testing
+TOKEN_NAMES = ["weth_address", "usdt_address"]
+
+
+def get_token_addresses(_token_names):
+    network_addresses = config["networks"][network.show_active()]
+    return [network_addresses[name] for name in _token_names]
+
 
 def get_wallet_balances(account, tokens, verbose=True):
     balances = []
@@ -43,16 +51,12 @@ def get_account(index=None, id=None):
 
 def deposit_eth_into_weth(_amount):
     # the amount is in Wei
-    if (
-        network.show_active()
-        in LOCAL_BLOCKCHAIN_ENVIRONMENTS + NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS
-    ):
-        print("Depositing ETH into WETH...")
-        tx = interface.IWeth(
-            config["networks"][network.show_active()]["weth_address"]
-        ).deposit({"from": get_account(), "value": _amount})
-        tx.wait(1)
-        print("Deposit done")
+    print("Depositing ETH into WETH...")
+    tx = interface.IWeth(
+        config["networks"][network.show_active()]["weth_address"]
+    ).deposit({"from": get_account(), "value": _amount})
+    tx.wait(1)
+    print("Deposit done")
 
 
 contract_name_to_contract_type = {

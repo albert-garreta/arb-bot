@@ -19,7 +19,7 @@ import "./SwapperV3.sol";
     exposed to a 'griefing' attack, where the stored funds are used by an attacker.
     !!!
  */
-contract Actor is SwapperV3, FlashLoanReceiverBase {
+contract Actor is SwapperV3, FlashLoanReceiverBase, Ownable {
     // SwapperV3 public swapper;
 
     // This is currently used only for testing purposes to check
@@ -28,7 +28,6 @@ contract Actor is SwapperV3, FlashLoanReceiverBase {
     uint256[] public preLoanBalances;
 
     constructor(
-        address[] memory _token_addresses,
         address _swap_router_address,
         address _lendingPoolAddressesProviderAddress
     )
@@ -73,16 +72,17 @@ contract Actor is SwapperV3, FlashLoanReceiverBase {
     // If you flash 100 AAVE, the 9bps fee is 0.09 AAVE
     // If you flash 500,000 DAI, the 9bps fee is 450 DAI
     // If you flash 10,000 LINK, the 9bps fee is 45 LINK
-    // All of these fees need to be sitting ON THIS CONTRACT before you execute this batch flash.
+    // All of these fees need to be sitting ON THIS CONTRACT
+    // before you execute this batch flash.
     function requestFlashLoanAndAct(
         address[] memory _tokenAddresses,
         uint256[] memory amounts
-    ) public {
+    ) public onlyOwner {
         address receiverAddress = address(this);
-
-        // 0 = no debt, 1 = stable, 2 = variable
         uint256[] memory modes = new uint256[](amounts.length);
+
         for (uint256 i = 0; i < amounts.length; i++) {
+            // 0 = no debt, 1 = stable, 2 = variable
             modes[i] = 0;
         }
 
@@ -90,7 +90,7 @@ contract Actor is SwapperV3, FlashLoanReceiverBase {
         bytes memory params = "";
         uint16 referralCode = 0;
 
-        // just for testing purposes currently
+        // just for testing purposes
         for (uint256 i = 0; i < amounts.length; i++) {
             IERC20 token = IERC20(_tokenAddresses[i]);
             preLoanBalances.push(token.balanceOf(address(this)));
@@ -105,5 +105,19 @@ contract Actor is SwapperV3, FlashLoanReceiverBase {
             params,
             referralCode
         );
+
+        withdrawAllFunds(_tokenAddresses);
+    }
+
+    function withdrawAllFunds(address[] memory _tokenAddresses)
+        public
+        onlyOwner
+    {
+        // TODO: send gains to user. Important for security
+        for (uint256 i = 0; i < _tokenAddresses.length; i++) {
+            // TODO: not loop over all list, but only those where the balance is >0
+            IERC20 token = IERC20(_tokenAddresses[i]);
+            token.transfer(msg.sender, token.balanceOf(address(this)));
+        }
     }
 }
