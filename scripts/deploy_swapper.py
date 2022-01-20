@@ -8,11 +8,13 @@ def deploy_swapper(_version="V2"):
     newtork_addresses = config["networks"][network.show_active()]
     swap_router_address = newtork_addresses[f"swap_router_{_version}_address"]
     if _version == "V2":
-        swapper = SwapperV2.deploy(swap_router_address, {"from": account})
+        if len(SwapperV2) <= 0:
+            SwapperV2.deploy(swap_router_address, {"from": account})
     elif _version == "V3":
-        swapper = SwapperV3.deploy(swap_router_address, {"from": account})
+        if len(SwapperV3) <= 0:
+            SwapperV3.deploy(swap_router_address, {"from": account})
     print("Deployed!")
-    return swapper
+    return SwapperV2[-1]
 
 
 def main():

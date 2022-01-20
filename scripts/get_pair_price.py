@@ -30,8 +30,8 @@ def get_pair_price_via_pool_reserves(
     # We now need to make sure that the two tokens are using the same number of decimals
     decimals0 = interface.IERC20(pair.token0()).decimals()
     decimals1 = interface.IERC20(pair.token1()).decimals()
-    reserve0 *= 10 ** (18 - decimals0)
-    reserve1 *= 10 ** (18 - decimals1)
+    reserve0 *= 10 ** (max(decimals0, decimals1) - decimals0)
+    reserve1 *= 10 ** (max(decimals0, decimals1) - decimals1)
 
     # Now we can compute de price
     # See uniswap v2 withepaper
@@ -67,6 +67,8 @@ def order_has_reversed(token0_address, token1_address, pair):
 def get_pair_price_via_result_of_swapping(
     _token_in_address, _token_out_address, _version="V2", _verbose=False
 ):
+    # !!! This does not work because the method `getAmountsOut` is internal
+
     # Here we calculate the price by checking what we would get from swapping
     # 1 of _token_in by token_out. The code comes from examining the function
     # swapExactTokensForTokens from the UniswapV2Router0.2 contract
