@@ -1,4 +1,4 @@
-from scripts.utils import get_account, get_token_addresses, TOKEN_NAMES
+from scripts.utils import get_account
 from brownie import config, network, Actor
 
 

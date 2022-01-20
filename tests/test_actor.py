@@ -3,13 +3,12 @@ from brownie import interface
 from web3 import Web3
 import math
 from scripts.deploy_actor import deploy_actor
-from testconf import VERSION
+from testconf import TOKEN_NAMES
 from scripts.utils import (
     get_account,
     get_token_addresses,
     get_wallet_balances,
     deposit_eth_into_weth,
-    TOKEN_NAMES,
 )
 
 # the tests are currently perfomrmed assuming the only asset flashloaned is WETH

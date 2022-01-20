@@ -1,5 +1,5 @@
 from scripts.utils import get_account
-from brownie import config, network, interface, SwapperV2, SwapperV3
+from brownie import config, network, SwapperV2, SwapperV3
 
 
 def deploy_swapper(_version="V2"):

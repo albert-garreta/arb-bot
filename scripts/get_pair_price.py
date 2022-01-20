@@ -50,7 +50,7 @@ def get_pair_price_via_result_of_swapping(
     factory = interface.IUniswapV2Factory(network_addresses["uniswap_factory_address"])
     library = interface.IUniswapV2Library(network_addresses["uniswap_library_address"])
     amount = library.getAmountsOut(
-        factory, amountIn=1, path=[_token_in_address, _token_out_address]
+        factory, 1, [_token_in_address, _token_out_address], {"from": account}
     )
     price = 1 / amount
     if _verbose:

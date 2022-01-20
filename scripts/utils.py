@@ -1,16 +1,18 @@
-from brownie import accounts, network, config, Contract, interface
-from web3 import Web3
+from brownie import accounts, network, config, interface
 
 NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS = ["development", "ganache"]
 LOCAL_BLOCKCHAIN_ENVIRONMENTS = NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS + [
     "mainnet-fork",
     "ftm-main-fork",
 ]
-DECIMALS = 18
-INITIAL_PRICE_FEED_VALUE = 3300 * 10 ** 18
+ETH_NETWORKS = ["mainnet-fork", "kovan"]
+FTM_NETWORKS = ["ftm-main-fork-2", "ftm-test"]
 
-# So far used for testing
-TOKEN_NAMES = ["weth_address", "usdt_address"]
+
+def get_address(_name):
+    # This line of code is used so often that maybe it is better to have
+    # a short-hand version of it
+    return config["networks"][network.show_active()][_name]
 
 
 def get_token_addresses(_token_names):
@@ -25,7 +27,7 @@ def get_wallet_balances(account, tokens, verbose=True):
         if verbose:
             print(
                 f"{token.name()} (decimals {token.decimals()}) "
-                f"balance {round((token_balance/10**token.decimals()),8)}"
+                f"balance {(token_balance/10**token.decimals())}"
             )
         balances.append(token_balance)
     return balances
@@ -107,10 +109,8 @@ def get_contract(contract_name):
     return contract
 
 
-def deploy_mocks(decimals=DECIMALS, initial_value=INITIAL_PRICE_FEED_VALUE):
+def deploy_mocks():
     """
     Use this script if you want to deploy mocks to a testnet
     """
-    print(f"The active network is {network.show_active()}")
-    print("Deploying Mocks...")
-    account = get_account()
+    pass

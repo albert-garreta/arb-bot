@@ -13,7 +13,7 @@ compiler:
       - "@openzeppelin=OpenZeppelin/openzeppelin-contracts@4.4.2"
       - "@uniswap-periphery=Uniswap/v3-periphery@1.3.0"
 networks:
-  default: mainnet-fork
+  default: ftm-test
   kovan:
     weth_address: "0xd0A1E359811322d97991E03f863a0C30C2cF029C"
     usdt_address: "0x13512979ade267ab5100878e2e0f485b568328a4"
@@ -30,11 +30,21 @@ networks:
     uniswap_factory_address: "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f"
     uniswap_library_address: "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f"
     lending_pool_addresses_provider_address: "0xB53C1a33016B2DC2fF3653530bfF1848a515c8c5"
-  ftm-main-fork:
-    ftm_address: ""
-    mim_address: ""
-    verify: False
+  ftm-main-fork-2:
+    weth_address: ""
+    usdt_address: "0x049d68029688eAbF473097a2fC38ef61633A3C7A" # fUSDT
+    swap_router_V2_address: "0xF491e7B69E4244ad4002BC14e878a34207E38c29"
+    swap_router_V3_address: ""
+    uniswap_factory_address: "0x152eE697f2E276fA89E96742e9bB9aB1F2E61bE3"
+    uniswap_library_address: ""
+    lending_pool_addresses_provider_address: ""
   ftm-test:
-    ftm_address: ""
-    mim_address: ""
-    verify: False
+    # this is actually wFTM, but we keep the name weth for simplicity of code
+    weth_address: "0xf1277d1Ed8AD466beddF92ef448A132661956621"
+    # this is # fUSDT
+    usdt_address: "0x7d6407Bde2a835D96B2e23eb5a8E90A0C81E834d" 
+    swap_router_V2_address: "0xcCAFCf876caB8f9542d6972f87B5D62e1182767d"
+    swap_router_V3_address: ""
+    uniswap_factory_address: "0x5D479c2a7FB79E12Ac4eBBAeDB0322B4d5F9Fd02"
+    uniswap_library_address: ""
+    lending_pool_addresses_provider_address: ""
