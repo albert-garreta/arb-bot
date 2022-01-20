@@ -5,8 +5,8 @@ LOCAL_BLOCKCHAIN_ENVIRONMENTS = NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS + [
     "mainnet-fork",
     "ftm-main-fork",
 ]
-ETH_NETWORKS = ["mainnet-fork", "kovan"]
-FTM_NETWORKS = ["ftm-main-fork-2", "ftm-test"]
+ETH_NETWORKS = ["mainnet", "mainnet-fork", "kovan"]
+FTM_NETWORKS = ["ftm-main", "ftm-main-fork", "ftm-test"]
 
 
 def get_address(_name):

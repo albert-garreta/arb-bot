@@ -1,4 +1,3 @@
-from logging import raiseExceptions
 from scripts.deploy_swapper import deploy_swapper
 from scripts.utils import (
     get_account,
@@ -27,11 +26,11 @@ def test_swap_exact_input_single():
         weth_amount_to_swap = 0.0001
         main_token_price_lower_bound, main_token_price_upper_bound = 3000, 5000
     elif active_net in FTM_NETWORKS:
-        amount_weth_deposit = 3
-        weth_amount_to_swap = 1
+        amount_weth_deposit = 0.1
+        weth_amount_to_swap = 0.1
         main_token_price_lower_bound, main_token_price_upper_bound = 1, 5
     else:
-        raiseExceptions("Network is not supported")
+        raise Exception("Network is not supported")
 
     deposit_eth_into_weth(_amount=Web3.toWei(amount_weth_deposit, "ether"))
 

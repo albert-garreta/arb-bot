@@ -1,4 +1,3 @@
-from logging import raiseExceptions
 from brownie import network
 
 UNISWAP_VERSION = "V2"

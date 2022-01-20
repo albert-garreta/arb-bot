@@ -22,6 +22,14 @@ networks:
     uniswap_factory_address: "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f"
     uniswap_library_address: "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f"
     lending_pool_addresses_provider_address: "0x88757f2f99175387aB4C6a4b3067c77A695b0349"
+  mainnet:
+    weth_address: "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+    usdt_address: "0xdac17f958d2ee523a2206206994597c13d831ec7"
+    swap_router_V2_address: "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D"
+    swap_router_V3_address: "0xE592427A0AEce92De3Edee1F18E0157C05861564"
+    uniswap_factory_address: "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f"
+    uniswap_library_address: "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f"
+    lending_pool_addresses_provider_address: "0xB53C1a33016B2DC2fF3653530bfF1848a515c8c5"
   mainnet-fork:
     weth_address: "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
     usdt_address: "0xdac17f958d2ee523a2206206994597c13d831ec7"
@@ -30,21 +38,31 @@ networks:
     uniswap_factory_address: "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f"
     uniswap_library_address: "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f"
     lending_pool_addresses_provider_address: "0xB53C1a33016B2DC2fF3653530bfF1848a515c8c5"
-  ftm-main-fork-2:
-    weth_address: ""
-    usdt_address: "0x049d68029688eAbF473097a2fC38ef61633A3C7A" # fUSDT
+  ftm-main-fork-4:
+    weth_address: "0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83"
+    usdt_address: "0x04068da6c83afcfa0e13ba15a6696662335d5b75" # fUSDT
     swap_router_V2_address: "0xF491e7B69E4244ad4002BC14e878a34207E38c29"
     swap_router_V3_address: ""
     uniswap_factory_address: "0x152eE697f2E276fA89E96742e9bB9aB1F2E61bE3"
     uniswap_library_address: ""
-    lending_pool_addresses_provider_address: ""
+    lending_pool_addresses_provider_address: "0x6c793c628Fe2b480c5e6FB7957dDa4b9291F9c9b"
   ftm-test:
     # this is actually wFTM, but we keep the name weth for simplicity of code
     weth_address: "0xf1277d1Ed8AD466beddF92ef448A132661956621"
     # this is # fUSDT
-    usdt_address: "0x7d6407Bde2a835D96B2e23eb5a8E90A0C81E834d" 
+    usdt_address: "0x7d6407Bde2a835D96B2e23eb5a8E90A0C81E834d"
     swap_router_V2_address: "0xcCAFCf876caB8f9542d6972f87B5D62e1182767d"
     swap_router_V3_address: ""
     uniswap_factory_address: "0x5D479c2a7FB79E12Ac4eBBAeDB0322B4d5F9Fd02"
     uniswap_library_address: ""
     lending_pool_addresses_provider_address: ""
+  ftm-main:
+    # this is actually wFTM, but we keep the name weth for simplicity of code
+    weth_address: "0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83"
+    # this is USDC
+    usdt_address: "0x04068da6c83afcfa0e13ba15a6696662335d5b75"
+    swap_router_V2_address: "0xF491e7B69E4244ad4002BC14e878a34207E38c29"
+    swap_router_V3_address: ""
+    uniswap_factory_address: "0x152eE697f2E276fA89E96742e9bB9aB1F2E61bE3"
+    uniswap_library_address: ""
+    lending_pool_addresses_provider_address: "0x6c793c628Fe2b480c5e6FB7957dDa4b9291F9c9b"
