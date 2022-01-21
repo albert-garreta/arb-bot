@@ -1,17 +1,14 @@
 from tkinter import E
-from scripts.utils import get_account
+from scripts.utils import get_account, get_dex_router_and_factory
 from brownie import interface, config, network
 
 
-def get_pair_price_via_pool_reserves(
-    _token_in_address, _token_out_address, _version="V2", _verbose=False
-):
+def get_pair_info(_token_in_address, _token_out_address, _dex_name, _version="V2"):
     account = get_account()
     if _version == "V3":
         raise Exception("V3 is not supported")
-    factory = interface.IUniswapV2Factory(
-        config["networks"][network.show_active()]["uniswap_factory_address"]
-    )
+    _, factory = get_dex_router_and_factory(dex_name=_dex_name)
+
     pair_address = factory.getPair(
         _token_in_address, _token_out_address, {"from": account}
     )
@@ -25,27 +22,42 @@ def get_pair_price_via_pool_reserves(
     # in the reverse order.
     reversed_order = order_has_reversed(_token_in_address, _token_out_address, pair)
 
-    reserve0, reserve1, block_timestamp_last = pair.getReserves({"from": account})
-
     # We now need to make sure that the two tokens are using the same number of decimals
-
     # !! FIX: I don't know why, but when I run this test on mainnet-fork, I get an error
     # sometimes if I don't pass {"from": account} when calling a state. This does not
     # happen on other networks (e.g. kovan, ftm-main, ftm-test...)
     decimals0 = interface.IERC20(pair.token0({"from": account})).decimals()
     decimals1 = interface.IERC20(pair.token1({"from": account})).decimals()
-    reserve0 *= 10 ** (max(decimals0, decimals1) - decimals0)
-    reserve1 *= 10 ** (max(decimals0, decimals1) - decimals1)
+    name0 = interface.IERC20(pair.token0({"from": account})).name()
+    name1 = interface.IERC20(pair.token1({"from": account})).name()
+
+    return pair, name0, name1, decimals0, decimals1, reversed_order, account
+
+
+def get_pair_price_via_pool_reserves(
+    _pair,
+    _name0,
+    _name1,
+    _decimals0,
+    _decimals1,
+    _reversed_order,
+    _account,
+    _verbose=False,
+):
+    # The way this function is designed is so that it is as fast as possible
+    # when retrieving prices: since it is static, we want all the info wr are
+    # passing in the arguments to be computed only once
+    reserve0, reserve1, block_timestamp_last = _pair.getReserves({"from": _account})
+    reserve0 *= 10 ** (max(_decimals0, _decimals1) - _decimals0)
+    reserve1 *= 10 ** (max(_decimals0, _decimals1) - _decimals1)
 
     # Now we can compute de price
     # See uniswap v2 withepaper
     price = reserve0 / reserve1
-    if reversed_order:
+    if _reversed_order:
         price = 1 / price
     if _verbose:
-        name0 = interface.IERC20(pair.token0({"from": account})).name()
-        name1 = interface.IERC20(pair.token1({"from": account})).name()
-        print(f"{name0} amount {reserve0}\n{name1} amount {reserve1}")
+        print(f"{_name0} amount {reserve0}\n{_name1} amount {reserve1}")
         print(f"The price (via reserve balances) is {price}")
 
     return price

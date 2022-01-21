@@ -7,7 +7,6 @@ from scripts.utils import (
     ETH_NETWORKS,
     FTM_NETWORKS,
 )
-from testconf import UNISWAP_VERSION
 from brownie import network, config, interface
 from web3 import Web3
 
@@ -15,7 +14,7 @@ from web3 import Web3
 def test_swap_exact_input_single():
     account = get_account()
     active_net = network.show_active()
-    swapper = deploy_swapper(_version=UNISWAP_VERSION)
+    swapper = deploy_swapper()
     network_addresses = config["networks"][network.show_active()]
     weth_address = network_addresses["weth_address"]
     usdt_address = network_addresses["usdt_address"]

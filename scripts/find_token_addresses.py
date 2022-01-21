@@ -1,5 +1,5 @@
 from brownie import network, interface, config
-from scripts.utils import get_account, get_address
+from scripts.utils import get_account, get_address, get_dex_router_and_factory
 
 # I could not find some token addresses in some testnets like ftm-test
 # This scripts does it the hard way
@@ -13,7 +13,7 @@ def main():
     weth = router.WETH({"from": account})
     print("wrapped main token: ", weth)
 
-    factory = interface.IUniswapV2Factory(get_address("uniswap_factory_address"))
+    _, factory = get_dex_router_and_factory()
 
     with open("./ftm_testnet_token_addresses.txt", "w") as f:
         f.write("FTM TESTNET TOKEN ADDRESSES\n\n")

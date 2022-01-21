@@ -20,6 +20,16 @@ def get_token_addresses(_token_names):
     return [network_addresses[name] for name in _token_names]
 
 
+def get_dex_router_and_factory(dex_name="default_dex"):
+    network_addresses = config["networks"][network.show_active()]
+    if dex_name == "default_dex":
+        dex_name = network_addresses["dex_addresses"]["default_dex"]
+    dex_addresses = network_addresses["dex_addresses"][dex_name]
+    router = interface.IUniswapV2Router02(dex_addresses["swap_router_V2_address"])
+    factory = interface.IUniswapV2Factory(dex_addresses["uniswap_factory_address"])
+    return router, factory
+
+
 def get_wallet_balances(account, tokens, verbose=True):
     balances = []
     for token in tokens:
