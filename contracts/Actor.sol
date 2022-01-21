@@ -11,7 +11,7 @@ import "./aave-protocol-v2//FlashLoanReceiverBase.sol";
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "./SwapperV3.sol";
+import "./SwapperV2.sol";
 
 /** 
     !!!
@@ -19,7 +19,7 @@ import "./SwapperV3.sol";
     exposed to a 'griefing' attack, where the stored funds are used by an attacker.
     !!!
  */
-contract Actor is SwapperV3, FlashLoanReceiverBase, Ownable {
+contract Actor is SwapperV2, FlashLoanReceiverBase, Ownable {
     // SwapperV3 public swapper;
 
     // This is currently used only for testing purposes to check
@@ -31,7 +31,7 @@ contract Actor is SwapperV3, FlashLoanReceiverBase, Ownable {
         address _swap_router_address,
         address _lendingPoolAddressesProviderAddress
     )
-        SwapperV3(_swap_router_address)
+        SwapperV2(_swap_router_address)
         FlashLoanReceiverBase(
             ILendingPoolAddressesProvider(_lendingPoolAddressesProviderAddress)
         )
@@ -54,10 +54,12 @@ contract Actor is SwapperV3, FlashLoanReceiverBase, Ownable {
                 IERC20(assets[i]).balanceOf(initiator) - preLoanBalances[i]
             );
         }
+
+        swap();
         // At the end of your logic above, this contract owes
         // the flashloaned amounts + premiums.
         // Therefore ensure your contract has enough to repay
-        // these amounts.
+        // these amounts
 
         // Approve the LendingPool contract allowance to *pull* the owed amount
         for (uint256 i = 0; i < assets.length; i++) {
@@ -66,6 +68,10 @@ contract Actor is SwapperV3, FlashLoanReceiverBase, Ownable {
         }
 
         return true;
+    }
+
+    function swap() internal {
+        
     }
 
     // REMEMBER:
@@ -78,6 +84,7 @@ contract Actor is SwapperV3, FlashLoanReceiverBase, Ownable {
         address[] memory _tokenAddresses,
         uint256[] memory amounts
     ) public onlyOwner {
+        // !!! Does the onlyOwner here prevent grieffing attacks?
         address receiverAddress = address(this);
         uint256[] memory modes = new uint256[](amounts.length);
 

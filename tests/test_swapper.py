@@ -1,5 +1,6 @@
-from scripts.deploy_swapper import deploy_swapper
-from scripts.get_pair_price import get_pair_price_via_pool_reserves
+from scripts.deploy import deploy_swapper
+from scripts.prices import get_pair_price_full
+import bot_config
 from scripts.utils import (
     get_account,
     get_wallet_balances,
@@ -32,8 +33,8 @@ def test_swap_exact_input_single():
 
     deposit_eth_into_weth(_amount=Web3.toWei(amount_weth_deposit, "ether"))
 
-    usdt_weth_price = get_pair_price_via_pool_reserves(
-        weth_address, usdt_address, _verbose=True
+    usdt_weth_price = get_pair_price_full(
+        _dex_name=bot_config.dex_names[0], _verbose=True
     )
     weth_amount_to_swap = Web3.toWei(weth_amount_to_swap, "ether")
     print(f"weth amount to be swapped: {weth_amount_to_swap}")

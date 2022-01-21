@@ -1,9 +1,8 @@
 from webbrowser import get
 from brownie import interface
 from web3 import Web3
-import math
-from scripts.deploy_actor import deploy_actor
-from testconf import TOKEN_NAMES
+from scripts.deploy import deploy_actor
+import bot_config
 from scripts.utils import (
     get_account,
     get_token_addresses,
@@ -13,8 +12,9 @@ from scripts.utils import (
 
 # the tests are currently perfomrmed assuming the only asset flashloaned is WETH
 
-DEPOSIT_AMOUNT_ETH = 6
-ETH_TO_BORROW = 5000
+DEPOSIT_AMOUNT_ETH = bot_config.amount_for_fees + bot_config.extra_cover
+ETH_TO_BORROW = bot_config.amount_to_borrow
+TOKEN_NAMES = bot_config.token_names
 
 
 def test_actor():
@@ -34,20 +34,21 @@ def test_actor():
     # If you flash 10,000 LINK, the 9bps fee is 45 LINK
     # All of these fees need to be sitting ON THIS CONTRACT before you execute this batch flash.
     # !! transferFrom and approve since we are transfering from an external account (ours)
-    wei_to_transfer = Web3.toWei(0.001 * ETH_TO_BORROW, "ether") + 100000
+    wei_to_transfer = Web3.toWei(DEPOSIT_AMOUNT_ETH, "ether")
     print(f"Approving {wei_to_transfer} for transfering...")
-    tx = weth.approve(actor.address, wei_to_transfer + 10000, {"from": account})
+    tx = weth.approve(actor.address, wei_to_transfer, {"from": account})
     tx.wait(1)
     print("Approved")
 
-    assert weth.allowance(account.address, actor.address) == wei_to_transfer + 10000
+    assert weth.allowance(account.address, actor.address) == wei_to_transfer
     assert weth.balanceOf(account.address) >= wei_to_transfer
 
     print("Transferring weth to Actor...")
-    # !!! Careful: this needs to be called by actor, not me
+    #!!! Careful: this needs to be called by actor, not me
     tx = weth.transferFrom(
         account.address, actor.address, wei_to_transfer, {"from": actor.address}
     )
+    # tx = weth.transfer(actor.address, wei_to_transfer, {"from": account})
     tx.wait(1)
     print("Transfer done")
     weth_balance_of_Actor = weth.balanceOf(actor.address, {"from": account})
@@ -77,8 +78,9 @@ def test_actor():
 
     weth_final_owner_balance = weth.balanceOf(account, {"from": account})
     weth_final_actor_balance = weth.balanceOf(actor.address, {"from": account})
+    weth_final_owner_balance = Web3.fromWei(weth_final_owner_balance, "ether")
+    weth_final_actor_balance = Web3.fromWei(weth_final_actor_balance, "ether")
     print(f"Owner final weth balance: {weth_final_owner_balance}")
     print(f"Actor final weth balance: {weth_final_actor_balance}")
+    
     assert weth_final_actor_balance == 0
-
-    # ! check also only the owner can withdraw

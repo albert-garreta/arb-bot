@@ -1,23 +1,12 @@
-from scripts.get_pair_price import get_pair_price_via_pool_reserves, get_pair_info
+from scripts.data import get_pair_info
+from scripts.prices import get_pair_price_via_pool_reserves
 import bot_config
-from scripts.utils import get_token_addresses
-
-
-def get_all_dex_to_pair_data(_token_names, _dexes):
-    print("Retrieving all necessary pair contracts and data...")
-    token_addresses = get_token_addresses(_token_names)
-    dex_to_pair_data = dict()
-    for dex_name in _dexes:
-        pair_data = get_pair_info(*token_addresses, dex_name)
-        dex_to_pair_data[dex_name] = pair_data
-    print("Retrieved")
-    return dex_to_pair_data
 
 
 def search_arb_oportunity(_pair_dex_data, _verbose=False):
     prices = []
-    for dex_name, pair_data in _pair_dex_data.items():
-        usd_to_eth_price = get_pair_price_via_pool_reserves(*pair_data, _verbose=False)
+    for dex_name in bot_config.dex_names:
+        usd_to_eth_price = get_pair_price_via_pool_reserves(_pair_dex_data, dex_name)
         # switch to normal
         eth_price = 1 / usd_to_eth_price
         prices.append(eth_price)
