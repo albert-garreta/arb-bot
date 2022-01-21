@@ -37,7 +37,7 @@ def test_swap_exact_input_single():
         weth_address, usdt_address, _verbose=True
     )
     weth_amount_to_swap = Web3.toWei(weth_amount_to_swap, "ether")
-    print(f"weth amount in {weth_amount_to_swap}")
+    print(f"weth amount to be swapped: {weth_amount_to_swap}")
     balances_before = get_wallet_balances(account, [weth, usdt])
 
     print("Approving spending...")
@@ -57,7 +57,7 @@ def test_swap_exact_input_single():
     usdt_before = balances_before[1]
     usdt_after = balances_after[1]
     difference = (usdt_after - usdt_before) / 10 ** usdt.decimals()
-    target_gains = weth_amount_to_swap / (usdt_weth_price * 10 ** usdt.decimals())
+    target_gains = weth_amount_to_swap / (usdt_weth_price * 10 ** weth.decimals())
     print(f"Actual usdt gain: {difference}")
     print(f"Expected usdt gain: {target_gains}")
     assert difference <= target_gains + 1 and difference >= target_gains - 1

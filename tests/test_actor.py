@@ -13,8 +13,8 @@ from scripts.utils import (
 
 # the tests are currently perfomrmed assuming the only asset flashloaned is WETH
 
-DEPOSIT_AMOUNT_ETH = 0.01
-ETH_TO_BORROW = 10
+DEPOSIT_AMOUNT_ETH = 6
+ETH_TO_BORROW = 5000
 
 
 def test_actor():
@@ -34,15 +34,19 @@ def test_actor():
     # If you flash 10,000 LINK, the 9bps fee is 45 LINK
     # All of these fees need to be sitting ON THIS CONTRACT before you execute this batch flash.
     # !! transferFrom and approve since we are transfering from an external account (ours)
-    wei_to_transfer = Web3.toWei(0.0009 * ETH_TO_BORROW, "ether") + 100000
+    wei_to_transfer = Web3.toWei(0.001 * ETH_TO_BORROW, "ether") + 100000
     print(f"Approving {wei_to_transfer} for transfering...")
-    tx = weth.approve(actor.address, wei_to_transfer, {"from": account})
+    tx = weth.approve(actor.address, wei_to_transfer + 10000, {"from": account})
     tx.wait(1)
     print("Approved")
 
+    assert weth.allowance(account.address, actor.address) == wei_to_transfer + 10000
+    assert weth.balanceOf(account.address) >= wei_to_transfer
+
     print("Transferring weth to Actor...")
+    # !!! Careful: this needs to be called by actor, not me
     tx = weth.transferFrom(
-        account.address, actor.address, wei_to_transfer, {"from": account}
+        account.address, actor.address, wei_to_transfer, {"from": actor.address}
     )
     tx.wait(1)
     print("Transfer done")

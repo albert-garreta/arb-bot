@@ -28,8 +28,12 @@ def get_pair_price_via_pool_reserves(
     reserve0, reserve1, block_timestamp_last = pair.getReserves({"from": account})
 
     # We now need to make sure that the two tokens are using the same number of decimals
-    decimals0 = interface.IERC20(pair.token0()).decimals()
-    decimals1 = interface.IERC20(pair.token1()).decimals()
+
+    # !! FIX: I don't know why, but when I run this test on mainnet-fork, I get an error
+    # sometimes if I don't pass {"from": account} when calling a state. This does not
+    # happen on other networks (e.g. kovan, ftm-main, ftm-test...)
+    decimals0 = interface.IERC20(pair.token0({"from": account})).decimals()
+    decimals1 = interface.IERC20(pair.token1({"from": account})).decimals()
     reserve0 *= 10 ** (max(decimals0, decimals1) - decimals0)
     reserve1 *= 10 ** (max(decimals0, decimals1) - decimals1)
 
@@ -39,8 +43,8 @@ def get_pair_price_via_pool_reserves(
     if reversed_order:
         price = 1 / price
     if _verbose:
-        name0 = interface.IERC20(pair.token0()).name()
-        name1 = interface.IERC20(pair.token1()).name()
+        name0 = interface.IERC20(pair.token0({"from": account})).name()
+        name1 = interface.IERC20(pair.token1({"from": account})).name()
         print(f"{name0} amount {reserve0}\n{name1} amount {reserve1}")
         print(f"The price (via reserve balances) is {price}")
 
@@ -48,8 +52,9 @@ def get_pair_price_via_pool_reserves(
 
 
 def order_has_reversed(token0_address, token1_address, pair):
-    token0_address_in_pair = pair.token0()
-    token1_address_in_pair = pair.token1()
+    account = get_account()
+    token0_address_in_pair = pair.token0({"from": account})
+    token1_address_in_pair = pair.token1({"from": account})
     if (
         token0_address_in_pair == token1_address
         and token1_address_in_pair == token0_address

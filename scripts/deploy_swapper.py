@@ -10,11 +10,17 @@ def deploy_swapper(_version="V2"):
     if _version == "V2":
         if len(SwapperV2) <= 0:
             SwapperV2.deploy(swap_router_address, {"from": account})
+            print("Deployed!")
+        else:
+            print("Swapper was already deployed")
+        return SwapperV2[-1]
     elif _version == "V3":
         if len(SwapperV3) <= 0:
             SwapperV3.deploy(swap_router_address, {"from": account})
-    print("Deployed!")
-    return SwapperV2[-1]
+            print("Deployed!")
+        else:
+            print("Swapper was already deployed")
+        return SwapperV3[-1]
 
 
 def main():
