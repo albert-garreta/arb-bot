@@ -19,63 +19,31 @@ import "./SwapperV2.sol";
     exposed to a 'griefing' attack, where the stored funds are used by an attacker.
     !!!
  */
-contract Actor is SwapperV2, FlashLoanReceiverBase, Ownable {
+contract Actor is FlashLoanReceiverBase, Ownable {
     // SwapperV3 public swapper;
+    IUniswapV2Router02[] internal swapRouters;
 
     // This is currently used only for testing purposes to check
     // the loan ammount received during the flash loan
     uint256[] public amountsLoanReceived;
     uint256[] public preLoanBalances;
+    // Used only for testing.
+    // TODO: delete for production?
+    // TODO: we know this will be a length-2 array of length-2 arrays:
+    // specify for efficiency
+    uint256[] public swapReturns;
 
     constructor(
-        address[] _swap_router_addresses,
+        address[] memory _swapRouterAddresses,
         address _lendingPoolAddressesProviderAddress
     )
-        SwapperV2(_swap_router_addresses)
         FlashLoanReceiverBase(
             ILendingPoolAddressesProvider(_lendingPoolAddressesProviderAddress)
         )
-    {}
-
-    // This function is called after your contract has received the flash loaned amount
-    function executeOperation(
-        address[] calldata assets,
-        uint256[] calldata amounts,
-        uint256[] calldata premiums,
-        address initiator,
-        bytes calldata params
-    ) external override returns (bool) {
-        //
-        // This contract now has the funds requested.
-        // Your logic goes here.
-        //
-
-        // TODO: This should be deleted or avoided for production.
-        // Currently we use it for testing purposes
-        for (uint256 i = 0; i < amounts.length; i++) {
-            amountsLoanReceived.push(
-                IERC20(assets[i]).balanceOf(initiator) - preLoanBalances[i]
-            );
+    {
+        for (uint256 i = 0; i < _swapRouterAddresses.length; i++) {
+            swapRouters.push(IUniswapV2Router02(_swapRouterAddresses[i]));
         }
-
-        uint256 amountOut = twoHopArbitrage();
-
-        // At the end of your logic above, this contract owes
-        // the flashloaned amounts + premiums.
-        // Therefore ensure your contract has enough to repay
-        // these amounts
-
-        // Approve the LendingPool contract allowance to *pull* the owed amount
-        for (uint256 i = 0; i < assets.length; i++) {
-            uint256 amountOwing = amounts[i] + premiums[i];
-            IERC20(assets[i]).approve(address(LENDING_POOL), amountOwing);
-        }
-
-        return true;
-    }
-
-    function swap() internal {
-
     }
 
     // REMEMBER:
@@ -98,7 +66,7 @@ contract Actor is SwapperV2, FlashLoanReceiverBase, Ownable {
         }
 
         address onBehalfOf = address(this);
-        bytes memory params = "";
+        bytes memory params;
         uint16 referralCode = 0;
 
         // just for testing purposes
@@ -121,6 +89,91 @@ contract Actor is SwapperV2, FlashLoanReceiverBase, Ownable {
         withdrawAllFunds(_tokenAddresses);
     }
 
+    // This function is called after your contract has received the flash loaned amount
+    function executeOperation(
+        address[] calldata assets,
+        uint256[] calldata amounts,
+        uint256[] calldata premiums,
+        address initiator,
+        bytes calldata params
+    ) external override returns (bool) {
+        //
+        // This contract now has the funds requested.
+        // Your logic goes here.
+        //
+
+        // TODO: This should be deleted or avoided for production.
+        // Currently we use it for testing purposes
+        for (uint256 i = 0; i < amounts.length; i++) {
+            amountsLoanReceived.push(
+                IERC20(assets[i]).balanceOf(initiator) - preLoanBalances[i]
+            );
+        }
+
+        // NOTE: Instead of switching the order of the dexes if needed,
+        // we switch the order of the tokens (so instead of buying token1 in dex1 or dex0
+        // and selling token1 in dex0 or dex1, what varies is what we buy/sell)
+        // TODO: remove the arguments router0Index and router1Index from everywhere
+        // if we proceed like this
+        // twoHopArbitrage(
+        //     assets[0],
+        //     assets[1],
+        //     amounts[0],
+        //     0, // minAmountOut0,
+        //     0, // minAmountOut1,
+        //     0, // router0Index
+        //     1 // router1Index
+        // );
+
+        // At the end of your logic above, this contract owes
+        // the flashloaned amounts + premiums.
+        // Therefore ensure your contract has enough to repay
+        // these amounts
+
+        // Approve the LendingPool contract allowance to *pull* the owed amount
+        for (uint256 i = 0; i < assets.length; i++) {
+            uint256 amountOwing = amounts[i] + premiums[i];
+            IERC20(assets[i]).approve(address(LENDING_POOL), amountOwing);
+        }
+
+        return true;
+    }
+
+    function twoHopArbitrage(
+        address _token0Address,
+        address _token1Address,
+        uint256 _amountIn,
+        uint256 _minAmountOut0,
+        uint256 _minAmountOut1,
+        uint8 _router0Index,
+        uint8 _router1Index
+    ) public {
+        // tx = _token0.approve(_swapper.address, _amount_in, {"from": account})
+        // tx.wait(1)
+
+        uint256[] memory amountsOut = swapExactTokensForTokens(
+            _token0Address,
+            _token1Address,
+            _amountIn,
+            _minAmountOut0,
+            _router0Index
+        );
+
+        // Only for testing
+        swapReturns.push(amountsOut[1]);
+        // _token1.approve(_swapper.address, amount_out_first_swap, {"from": account})
+
+        amountsOut = swapExactTokensForTokens(
+            _token1Address,
+            _token0Address,
+            amountsOut[1],
+            _minAmountOut1,
+            _router1Index
+        );
+        // Only for testing
+        swapReturns.push(amountsOut[1]);
+    }
+
     function withdrawAllFunds(address[] memory _tokenAddresses)
         public
         onlyOwner
@@ -131,5 +184,42 @@ contract Actor is SwapperV2, FlashLoanReceiverBase, Ownable {
             IERC20 token = IERC20(_tokenAddresses[i]);
             token.transfer(msg.sender, token.balanceOf(address(this)));
         }
+    }
+
+    function swapExactTokensForTokens(
+        address _tokenInAddress,
+        address _tokenOutAddress,
+        uint256 _amountIn,
+        uint256 _minAmountOut,
+        uint256 _routerIndex
+    ) public returns (uint256[] memory) {
+        // No need to do this step in the second swap of the
+        // twoHorpArbitrage function
+
+        IERC20 tokenIn = IERC20(_tokenInAddress);
+        tokenIn.approve(address(swapRouters[_routerIndex]), _amountIn);
+
+        // require(
+        //     tokenIn.allowance(
+        //         address(this),
+        //         address(swapRouters[_routerIndex])
+        //     ) == _amountIn
+        // );
+        // require(tokenIn.balanceOf(_whoToTransferFrom) == _amountIn);
+
+        address[] memory path = new address[](2);
+        path[0] = _tokenInAddress;
+        path[1] = _tokenOutAddress;
+
+        uint256[] memory amounts = swapRouters[_routerIndex]
+            .swapExactTokensForTokens(
+                _amountIn,
+                _minAmountOut, // min amount out
+                path,
+                address(this),
+                block.timestamp
+            );
+
+        return amounts;
     }
 }

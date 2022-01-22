@@ -1,8 +1,10 @@
 from scripts.deploy import deploy_swapper
 from scripts.prices import get_pair_price_full
+from scripts.swapper_scripts import two_hop_arbitrage
 import bot_config
 from scripts.utils import (
     get_account,
+    get_wallet_balances,
     get_wallet_balances,
     deposit_eth_into_weth,
     ETH_NETWORKS,
@@ -12,44 +14,11 @@ from brownie import network, config, interface
 from web3 import Web3
 
 
-def test_two_hop_arbitrage():
-    account = get_account()
-    active_net = network.show_active()
-    swapper = deploy_swapper(bot_config.dex_names)
-
-    network_addresses = config["networks"][active_net]
-    weth_address = network_addresses["weth_address"]
-    usdt_address = network_addresses["usdt_address"]
-    weth = interface.IWeth(weth_address)
-    usdt = interface.IERC20(usdt_address)
-
-    if active_net in ETH_NETWORKS:
-        amount_in = 0.001
-    elif active_net in FTM_NETWORKS:
-        amount_in = 0.1
-    else:
-        raise Exception("Network is not supported")
-
-    deposit_eth_into_weth(amount_in)
-
-    weth.approve(swapper.address, amount_in, {"from": account})
-
-    amount_out = swapper.twoHopArbitrage(
-        weth_address,  # token0_address,
-        usdt_address,  # token1_address
-        amount_in,
-        0,  # min_amount_out0,
-        0,  # min_amount_out1,
-        0,  # router0_index
-        1,  # router1_index,
-        {"from": account},
-    )
-
 
 def test_swap_exact_input_single():
     account = get_account()
     active_net = network.show_active()
-    swapper = deploy_swapper([bot_config.dex_names[0]])
+    swapper = deploy_swapper(bot_config.dex_names)
     network_addresses = config["networks"][active_net]
     weth_address = network_addresses["weth_address"]
     usdt_address = network_addresses["usdt_address"]
@@ -81,8 +50,16 @@ def test_swap_exact_input_single():
 
     print("Swapping...")
     min_amount_out = 0
+    router_index = 0
+    do_transfer_from = True
     tx = swapper.swapExactTokensForTokens(
-        weth, usdt, weth_amount_to_swap, min_amount_out, {"from": account}
+        weth,
+        usdt,
+        weth_amount_to_swap,
+        min_amount_out,
+        router_index,
+        do_transfer_from,
+        {"from": account},
     )
     tx.wait(1)
     print("Swapped!")

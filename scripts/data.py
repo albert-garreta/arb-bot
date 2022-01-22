@@ -62,7 +62,7 @@ def get_pair_info(_dex_name, _version="V2"):
     # Note: getReserves can also be called from the UniswapV2Library (see function below)
     pair = interface.IUniswapV2Pair(pair_address, {"from": account})
 
-    # !!!
+    # FIXME:
     # It seems that the `Pair` sometimes interchanges the order of the tokens: eg in
     # in mainnet's uniswap, if you pass (WETH, USDT) they get registerd correctly,
     # but in ftm-main's spookyswap, if you pass (WFTM, USDC) they get registered

@@ -4,6 +4,7 @@ from scripts.utils import get_account, get_address, get_dex_router_and_factory
 # I could not find some token addresses in some testnets like ftm-test
 # This scripts does it the hard way
 
+DEX = 'spookyswap'
 
 def main():
 
@@ -13,7 +14,7 @@ def main():
     weth = router.WETH({"from": account})
     print("wrapped main token: ", weth)
 
-    _, factory = get_dex_router_and_factory()
+    _, factory = get_dex_router_and_factory(DEX)
 
     with open("./ftm_testnet_token_addresses.txt", "w") as f:
         f.write("FTM TESTNET TOKEN ADDRESSES\n\n")

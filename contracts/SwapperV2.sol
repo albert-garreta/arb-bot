@@ -14,59 +14,28 @@ contract SwapperV2 is ISwapper {
         }
     }
 
-    function twoHopArbitrage(
-        address _tokenInAddress,
-        address _tokenOutAddress,
-        uint256 _amountIn,
-        uint256 _minAmountOut0,
-        uint256 _minAmountOut1,
-        uint256 _router0Index,
-        uint256 _router1Index
-    ) internal returns (uint256) {
-        // Swap tokenIn for tokenOut in router0, then swap tokenOut for tokenIn in router1
-        uint256 amountOutFirstSwap = swapExactTokensForTokens(
-            _tokenInAddress,
-            _tokenOutAddress,
-            _amountIn,
-            _minAmountOut0,
-            _router0Index,
-            true
-        );
-
-        uint256 amountOutFinal = swapExactTokensForTokens(
-            _tokenOutAddress,
-            _tokenInAddress,
-            amountOutFirstSwap,
-            _minAmountOut1,
-            _router1Index,
-            false
-        );
-
-        return amountOutFinal;
-    }
-
     function swapExactTokensForTokens(
         address _tokenInAddress,
         address _tokenOutAddress,
         uint256 _amountIn,
         uint256 _minAmountOut,
         uint256 _routerIndex,
-        bool _doTransferFrom
-    ) internal returns (uint256) {
+        address _beneficiaryAddress
+    ) public returns (uint256[] memory) {
         // No need to do this step in the second swap of the
         // twoHorpArbitrage function
-        if (_doTransferFrom) {
-            IERC20(_tokenInAddress).transferFrom(
-                address(msg.sender),
-                address(this),
-                _amountIn
-            );
-        }
 
-        IERC20(_tokenInAddress).approve(
-            address(swapRouters[_routerIndex]),
-            _amountIn
-        );
+        IERC20 tokenIn = IERC20(_tokenInAddress);
+        tokenIn.transferFrom(_beneficiaryAddress, address(this), _amountIn);
+        tokenIn.approve(address(swapRouters[_routerIndex]), _amountIn);
+
+        // require(
+        //     tokenIn.allowance(
+        //         address(this),
+        //         address(swapRouters[_routerIndex])
+        //     ) == _amountIn
+        // );
+        // require(tokenIn.balanceOf(_whoToTransferFrom) == _amountIn);
 
         address[] memory path = new address[](2);
         path[0] = _tokenInAddress;
@@ -77,10 +46,10 @@ contract SwapperV2 is ISwapper {
                 _amountIn,
                 _minAmountOut, // min amount out
                 path,
-                address(msg.sender),
+                _beneficiaryAddress,
                 block.timestamp
             );
 
-        return amounts[1];
+        return amounts;
     }
 }

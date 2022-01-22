@@ -7,6 +7,8 @@ interface ISwapper {
         address _tokenInAddress,
         address _tokenOutAddress,
         uint256 _amountIn,
-        uint256 _minAmountOut
-    ) external returns (uint256);
+        uint256 _minAmountOut,
+        uint256 _routerIndex,
+        address _beneficiaryAddress
+    ) external returns (uint256[] memory);
 }
