@@ -6,6 +6,15 @@ import bot_config
 
 
 def get_pair_price_full(_dex_name, _verbose=False):
+    """[summary]
+
+    Args:
+        _dex_name ([type]): [description]
+        _verbose (bool, optional): [description]. Defaults to False.
+
+    Returns:
+        float: the price of token1 with respect to to token0
+    """
     data = get_all_dex_to_pair_data()
     return get_pair_price_via_pool_reserves(data, _dex_name, _verbose)
 

@@ -2,6 +2,7 @@ from webbrowser import get
 from brownie import interface
 from web3 import Web3
 from scripts.deploy import deploy_actor, deploy_swapper
+from scripts.prices import get_pair_price_full
 import bot_config
 from scripts.utils import (
     get_account,
@@ -15,7 +16,7 @@ from scripts.utils import (
 DEPOSIT_AMOUNT_ETH = bot_config.amount_for_fees + bot_config.extra_cover
 # We pass 10% of the eth we could borrow just to rule out the possibility that the test
 # fails because actor has not enough funds after the twoHopArbitrage function
-ETH_TO_BORROW = bot_config.amount_to_borrow * 0.1
+ETH_TO_BORROW = bot_config.amount_to_borrow * 0.01
 TOKEN_NAMES = bot_config.token_names
 
 
@@ -88,12 +89,16 @@ def test_request_flashloan_and_act():
         f"WETH balance of Actor contract: {Web3.fromWei(weth_balance_of_Actor, 'ether')}"
     )
 
+    price_in_dex0 = get_pair_price_full(bot_config.dex_names[0])
+    price_in_dex1 = get_pair_price_full(bot_config.dex_names[1])
+    print(price_in_dex0, price_in_dex1)
+
     print("Requesting flash loan and acting...")
 
     tx = actor.requestFlashLoanAndAct(
         token_addresses,
         [Web3.toWei(ETH_TO_BORROW, "ether"), 0],
-        {"from": account},
+        {"from": account, "gas_price": 5000},
     )
     tx.wait(1)
     print("Success!")

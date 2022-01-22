@@ -5,6 +5,8 @@ import "./uniswap-v2/IUniswapV2Router02.sol";
 import "../interfaces/ISwapper.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
+//TODO: Deprecated: remove and put the swapper test in test_actor
+
 contract SwapperV2 is ISwapper {
     IUniswapV2Router02[] internal swapRouters;
 

@@ -7,6 +7,7 @@ from scripts.utils import deposit_eth_into_weth, get_account
 import bot_config
 from web3 import Web3
 import sys
+from datetime import date, datetime
 
 MAIN_NETWORKS = ["ftm-main", "mainnet"]
 
@@ -78,7 +79,9 @@ def act(_all_dex_to_pair_data, _actor, _verbose=True):
         tx = _actor.requestFlashLoanAndAct(
             [token0.address],
             [Web3.toWei(bot_config.amount_to_borrow, "ether")],
-            {"from": account},
+            {
+                "from": account,
+            },
         )
         tx.wait(1)
         print("Success!")
@@ -93,19 +96,51 @@ def run_epoch(_all_dex_to_pair_data, _actor):
     oportunty = check_if_arbitrage_oportunity(_all_dex_to_pair_data)
     if oportunty and not bot_config.debug_mode:
         success = act(_all_dex_to_pair_data, _actor)
-    if success:
-        prepare_actor()
+        if success:
+            _actor = prepare_actor(_all_dex_to_pair_data, _actor)
 
 
 def check_if_arbitrage_oportunity(_all_dex_to_pair_data):
     profit = search_arb_oportunity(_all_dex_to_pair_data, _verbose=True)
-    if profit > bot_config.min_profit_to_act:
+    if profit > 0.01 + sum(bot_config.dex_fees) + bot_config.lending_pool_fee:
         print("ACT\n")
+        slippage_tolerance = (
+            profit - 0.01 + sum(bot_config.dex_fees) + bot_config.lending_pool_fee
+        )
+        with open("./reports/actions.txt", "a") as f:
+            f.write(f"{datetime.now()}- Acting for non-taxed profit {profit}\n")
         return True
     else:
         return False
 
 
+def epoch_due(block_number):
+    """
+    Returns a boolean indicating whether block_number is the number of the most recent block mined
+    Returns: bool
+    """
+    return get_latest_block_number() - block_number >= bot_config.blocks_to_wait
+
+
+def get_latest_block_number():
+    # Retrieve the latest block mined: chain[-1]
+    # https://eth-brownie.readthedocs.io/en/stable/core-chain.html#accessing-block-information
+    # Get its number
+    latest_block_number = chain[-1]["number"]
+    return latest_block_number
+
+
+def rebooter(function):
+    def wrapped_fun(*args, **kwargs):
+        try:
+            return function(*args, **kwargs)
+        except:
+            return wrapped_fun(*args, **kwargs)
+
+    return wrapped_fun
+
+
+@rebooter
 def run_bot():
     """
     The bot runs an epoch every time bot_config["time_between_epoch_due_checks"] are mined.
@@ -140,22 +175,6 @@ def run_bot():
             last_recorded_time = time.time()
             run_epoch(all_dex_to_pair_data, actor)
         time.sleep(bot_config.time_between_epoch_due_checks)
-
-
-def epoch_due(block_number):
-    """
-    Returns a boolean indicating whether block_number is the number of the most recent block mined
-    Returns: bool
-    """
-    return get_latest_block_number() - block_number >= bot_config.blocks_to_wait
-
-
-def get_latest_block_number():
-    # Retrieve the latest block mined: chain[-1]
-    # https://eth-brownie.readthedocs.io/en/stable/core-chain.html#accessing-block-information
-    # Get its number
-    latest_block_number = chain[-1]["number"]
-    return latest_block_number
 
 
 def main():

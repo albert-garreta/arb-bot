@@ -115,15 +115,15 @@ contract Actor is FlashLoanReceiverBase, Ownable {
         // and selling token1 in dex0 or dex1, what varies is what we buy/sell)
         // TODO: remove the arguments router0Index and router1Index from everywhere
         // if we proceed like this
-        // twoHopArbitrage(
-        //     assets[0],
-        //     assets[1],
-        //     amounts[0],
-        //     0, // minAmountOut0,
-        //     0, // minAmountOut1,
-        //     0, // router0Index
-        //     1 // router1Index
-        // );
+        twoHopArbitrage(
+            assets[0],
+            assets[1],
+            amounts[0],
+            0, // minAmountOut0,
+            0, // minAmountOut1,
+            0, // router0Index
+            1 // router1Index
+        );
 
         // At the end of your logic above, this contract owes
         // the flashloaned amounts + premiums.
