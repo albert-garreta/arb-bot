@@ -18,10 +18,10 @@ def deploy_actor(_swapper_version="V2"):
     return Actor[-1]
 
 
-def deploy_swapper(_version="V2"):
+def deploy_swapper(dex_list, _version="V2"):
     print(f"Deploying Swapper{_version}...")
     account = get_account()
-    router, _ = get_dex_router_and_factory()
+    routers, factories = get_dex_router_and_factory(dex_list)
 
     if _version == "V2":
         if len(SwapperV2) <= 0:

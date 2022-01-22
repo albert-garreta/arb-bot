@@ -28,10 +28,10 @@ contract Actor is SwapperV2, FlashLoanReceiverBase, Ownable {
     uint256[] public preLoanBalances;
 
     constructor(
-        address _swap_router_address,
+        address[] _swap_router_addresses,
         address _lendingPoolAddressesProviderAddress
     )
-        SwapperV2(_swap_router_address)
+        SwapperV2(_swap_router_addresses)
         FlashLoanReceiverBase(
             ILendingPoolAddressesProvider(_lendingPoolAddressesProviderAddress)
         )
@@ -49,13 +49,17 @@ contract Actor is SwapperV2, FlashLoanReceiverBase, Ownable {
         // This contract now has the funds requested.
         // Your logic goes here.
         //
+
+        // TODO: This should be deleted or avoided for production.
+        // Currently we use it for testing purposes
         for (uint256 i = 0; i < amounts.length; i++) {
             amountsLoanReceived.push(
                 IERC20(assets[i]).balanceOf(initiator) - preLoanBalances[i]
             );
         }
 
-        swap();
+        uint256 amountOut = twoHopArbitrage();
+
         // At the end of your logic above, this contract owes
         // the flashloaned amounts + premiums.
         // Therefore ensure your contract has enough to repay
@@ -71,7 +75,7 @@ contract Actor is SwapperV2, FlashLoanReceiverBase, Ownable {
     }
 
     function swap() internal {
-        
+
     }
 
     // REMEMBER:
@@ -98,6 +102,7 @@ contract Actor is SwapperV2, FlashLoanReceiverBase, Ownable {
         uint16 referralCode = 0;
 
         // just for testing purposes
+        // TODO: delete or skip in production
         for (uint256 i = 0; i < amounts.length; i++) {
             IERC20 token = IERC20(_tokenAddresses[i]);
             preLoanBalances.push(token.balanceOf(address(this)));
