@@ -70,11 +70,11 @@ def get_account(index=None, id=None):
         return accounts.add(config["wallets"]["from_key"])
 
 
-def deposit_eth_into_weth(_amount):
+def deposit_main_token_into_wrapped_version(_amount):
     # the amount is in Wei
-    print("Depositing ETH into WETH...")
+    print("Depositing mainnet token into its wrapped ERC20 version...")
     tx = interface.IWeth(
-        config["networks"][network.show_active()]["weth_address"]
+        config["networks"][network.show_active()]["wrapped_main_token_address"]
     ).deposit({"from": get_account(), "value": _amount})
     tx.wait(1)
     print("Deposit done")

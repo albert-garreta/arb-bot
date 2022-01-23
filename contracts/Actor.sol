@@ -11,7 +11,7 @@ import "./aave-protocol-v2//FlashLoanReceiverBase.sol";
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "./SwapperV2.sol";
+import "./uniswap-v2/IUniswapV2Router02.sol";
 
 /** 
     !!!
@@ -59,15 +59,12 @@ contract Actor is FlashLoanReceiverBase, Ownable {
         // !!! Does the onlyOwner here prevent grieffing attacks?
         address receiverAddress = address(this);
         uint256[] memory modes = new uint256[](amounts.length);
+        bytes memory params;
 
         for (uint256 i = 0; i < amounts.length; i++) {
             // 0 = no debt, 1 = stable, 2 = variable
             modes[i] = 0;
         }
-
-        address onBehalfOf = address(this);
-        bytes memory params;
-        uint16 referralCode = 0;
 
         // just for testing purposes
         // TODO: delete or skip in production
@@ -81,9 +78,9 @@ contract Actor is FlashLoanReceiverBase, Ownable {
             _tokenAddresses,
             amounts,
             modes,
-            onBehalfOf,
+            address(this), //onBehalfOf
             params,
-            referralCode
+            0 // referralCode
         );
 
         withdrawAllFunds(_tokenAddresses);

@@ -3,28 +3,33 @@ import time
 from scripts.deploy import deploy_actor
 from scripts.data import get_all_dex_to_pair_data
 from scripts.search_arb_oportunity import search_arb_oportunity
-from scripts.utils import deposit_eth_into_weth, get_account
+from scripts.utils import get_account
 import bot_config
 from web3 import Web3
 import sys
 from datetime import date, datetime
+import pandas as pd
 
 MAIN_NETWORKS = ["ftm-main", "mainnet"]
 
 
 class Logger(object):
-    def __init__(self):
+    def __init__(self, _pair_name, _dex_name):
+        self.pair = _pair_name
+        self.dex = _dex_name
+        self.min_spread = 0.3
+        self.spread_history = pd.DataFrame(columns=["date", "spread"])
+
+    def log(self, _spread):
         pass
 
 
 def prepare_actor(_all_dex_to_pair_data, _actor):
+    """Preliminary steps to the flashloan request and actions which can be done beforehand"""
+
     print("Preparing actor for a future flashloan...")
     account = get_account()
-    # Preliminary steps to the flashloan request and actions which can be done beforehand
 
-    # TODO: we don't neewd to loop here. We just want the token0 data, which is
-    # invariant of the dex. The only thing that dependes on the dex is `pair`
-    # and `reversed_order`
     print(_all_dex_to_pair_data["token_data"].keys())
     token0, name0, decimals0 = _all_dex_to_pair_data["token_data"][
         bot_config.token_names[0]
@@ -36,12 +41,10 @@ def prepare_actor(_all_dex_to_pair_data, _actor):
     amount_token0_to_actor = max(amount_token0_to_actor - token0s_aldready_in_actor, 0)
 
     if amount_token0_to_actor > 0:
-        if bot_config.token_names[0] == "weth_address":
-            deposit_eth_into_weth(amount_token0_to_actor)
-
         # !! transferFrom and approve since we are transfering from an external account (ours)
         print(
-            f"Approving {amount_token0_to_actor} of {name0} for transfering to actor..."
+            f"Approving {amount_token0_to_actor} of "
+            f"{name0} for transfering to actor..."
         )
         tx = token0.approve(
             _actor.address, amount_token0_to_actor + 10000, {"from": account}
@@ -49,10 +52,9 @@ def prepare_actor(_all_dex_to_pair_data, _actor):
         tx.wait(1)
         print("Approved")
 
-        # !!! Is it dangerous to make the transfer now? (grieffing attack?)
-
+        # TODO: Is it dangerous to make the transfer now? (grieffing attack?)
         print(f"Transferring {name0} to Actor...")
-        # !!! Careful: this needs to be called by actor, not me
+        # TODO: Check if this can be done just with a transfer
         tx = token0.transferFrom(
             account.address,
             _actor.address,
@@ -62,7 +64,7 @@ def prepare_actor(_all_dex_to_pair_data, _actor):
         tx.wait(1)
         print("Transfer done")
     else:
-        # TODO: Why? did this happen?
+        # TODO: Why did this happen?
         print("ATTENTION: actor holds too much tokens0s. How did this happen?")
     print("Preparation completed")
     return _actor
@@ -146,17 +148,6 @@ def run_bot():
     The bot runs an epoch every time bot_config["time_between_epoch_due_checks"] are mined.
     This is checked by epoch_due()
     """
-
-    # TODO: does not actually step when ran with `brownie run``
-    if (
-        config["networks"][network.show_active()] in MAIN_NETWORKS
-        and not bot_config.debug_mode
-    ):
-        confirm = sys.stin(
-            "Are you sure you want to run the bot in a mainnet in non-debug_mode? (y/n)"
-        )
-        if confirm == "n":
-            raise Exception  # TODO: Learn what is an excpetion, error, etc
 
     block_number = get_latest_block_number()
     last_recorded_time = time.time()

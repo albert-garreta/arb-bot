@@ -73,8 +73,9 @@ networks:
         swap_router_V2_address: "0x16327E3FbDaCA3bcF7E38F5Af2599D2DDc33aE52"
         uniswap_factory_address: "0xEF45d134b73241eDa7703fa787148D9C9F4950b0"
   ftm-main-fork:
-    weth_address: "0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83"
-    usdt_address: "0x04068da6c83afcfa0e13ba15a6696662335d5b75" # fUSDT
+    token0: "0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83" # WFTM
+    token1: "0x04068da6c83afcfa0e13ba15a6696662335d5b75" # USDC
+    wrapped_main_token_address: "0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83"
     # usdt_address: "0x6c021Ae822BEa943b2E66552bDe1D2696a53fbB7" # TOMB
     # usdt_address: "0x4cdF39285D7Ca8eB3f090fDA0C069ba5F4145B37" # TSHARE
     lending_pool_addresses_provider_address: "0x6c793c628Fe2b480c5e6FB7957dDa4b9291F9c9b"

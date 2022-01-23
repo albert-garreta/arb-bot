@@ -54,8 +54,6 @@ def get_pair_info(_dex_name, _version="V2"):
     account = get_account()
     token_addresses = get_token_addresses(bot_config.token_names)
 
-    if _version == "V3":
-        raise Exception("V3 is not supported")
     _, factory = get_dex_router_and_factory(_dex_name)
 
     pair_address = factory.getPair(*token_addresses, {"from": account})
