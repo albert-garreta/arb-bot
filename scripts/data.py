@@ -25,7 +25,7 @@ def get_all_dex_to_pair_data():
 
     # Use a class for the data structure we are creating?
     print("Retrieving all necessary pair contracts and data...")
-    print(f"Token names: {bot_config.token_names}")
+    # print(f"Token names: {bot_config.token_names}")
     dex_to_pair_data = dict()
     dex_to_pair_data["pair_data"] = {}
     for dex_name in bot_config.dex_names:
@@ -38,6 +38,7 @@ def get_all_dex_to_pair_data():
     token_names = bot_config.token_names
     for token_name, token_address in zip(token_names, get_token_addresses(token_names)):
         token = interface.IERC20(token_address)
+        print(token.name())
         decimals = token.decimals()
         name = token.name()
         dex_to_pair_data["token_data"][token_name] = [

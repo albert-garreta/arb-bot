@@ -18,7 +18,7 @@ from scripts.utils import (
 DEPOSIT_AMOUNT_TOKEN0 = bot_config.amount_for_fees + bot_config.extra_cover
 # We pass 10% of the eth we could borrow just to rule out the possibility that the test
 # fails because actor has not enough funds after the twoHopArbitrage function
-TOKEN0_TO_BORROW = bot_config.amount_to_borrow * 1  # 0.01
+TOKEN0_TO_BORROW = bot_config.amount_to_borrow * 0.01  # 0.01
 TOKEN_NAMES = bot_config.token_names
 
 
@@ -99,13 +99,18 @@ def test_request_flashloan_and_act():
 
     price_in_dex0 = get_pair_price_full(bot_config.dex_names[0])
     price_in_dex1 = get_pair_price_full(bot_config.dex_names[1])
-    print(price_in_dex0, price_in_dex1)
+    prices=[price_in_dex0, price_in_dex1]
+    print(f"Prices: {prices}")
+    max_spread = (max(prices)-min(prices))/min(prices)
+    print(f'Max spread: {max_spread}')
+    
 
     print("Requesting flash loan and acting...")
 
     tx = actor.requestFlashLoanAndAct(
         token_addresses,
         [Web3.toWei(TOKEN0_TO_BORROW, "ether"), 0],
+        0,  # min_dex_index
         {"from": account},  # , "gas_price": 5000},
     )
     tx.wait(1)
@@ -156,14 +161,12 @@ def test_swap_exact_input_single():
     print("Swapping...")
     min_amount_out = 0
     router_index = 0
-    do_transfer_from = True
     tx = actor.swapExactTokensForTokens(
         token0,
         token1,
         initial_deposit,
         min_amount_out,
         router_index,
-        do_transfer_from,
         {"from": account},
     )
     tx.wait(1)
@@ -177,76 +180,3 @@ def test_swap_exact_input_single():
     print(f"Actual token1 gain: {difference}")
     print(f"Expected token1 gain: {target_gains}")
     assert difference <= target_gains + 1 and difference >= target_gains - 1
-
-
-def test_two_hop_arbitrage_python():
-    account = get_account()
-    swapper = deploy_swapper(bot_config.dex_names)
-    token_addresses = get_token_addresses(TOKEN_NAMES)
-    token0 = interface.IERC20(token_addresses[0])
-    usdt = interface.IERC20(token_addresses[1])
-
-    amount_in = Web3.toWei(DEPOSIT_AMOUNT_TOKEN0, "ether")
-    deposit_main_token_into_wrapped_version(amount_in)
-    token0_balance = token0.balanceOf(account, {"from": account})
-    assert token0_balance == amount_in
-    print(f"token0 balance: {token0_balance}")
-
-    # We now are copying the code from the function `two_hop_arbitrage`
-    # and testing step by step
-
-    token0.approve(swapper.address, amount_in, {"from": account})
-    allowance_of_swapper = token0.allowance(
-        account.address, swapper.address, {"from": account}
-    )
-    print(
-        f"Allowance of swapper: {allowance_of_swapper}",
-    )
-    assert allowance_of_swapper == amount_in
-
-    _swapper = swapper
-    _token0 = token0
-    _token1 = usdt
-    _amount_in = amount_in
-    _min_amount_out0 = 0
-    _min_amount_out1 = 1
-    _router0_index = 0
-    _router1_index = 1
-
-    print("Balances before the two hop arbitrabe swaps:")
-    balances = get_wallet_balances(account, [_token0, _token1], verbose=True)
-    print("")
-
-    initial_token0_balance = balances[0]
-
-    tx = _swapper.swapExactTokensForTokens(
-        _token0.address,
-        _token1.address,
-        _amount_in,
-        _min_amount_out0,
-        _router0_index,
-    )
-    tx.wait(1)
-
-    print("Balances after the first swap:")
-    balances = get_wallet_balances(account, [_token0, _token1], verbose=True)
-    print("")
-
-    amount_out_first_swap = _swapper.amountOutFromSwap()
-    assert amount_out_first_swap == balances[1]
-
-    _token1.approve(_swapper.address, amount_out_first_swap, {"from": account})
-    tx = _swapper.swapExactTokensForTokens(
-        _token1.address,
-        _token0.address,
-        amount_out_first_swap,
-        _min_amount_out1,
-        _router1_index,
-    )
-    tx.wait(1)
-
-    print("Balances after the second swap:")
-    balances = get_wallet_balances(account, [_token0, _token1], verbose=True)
-    print(
-        f"\nDelta of token0 balance: {(balances[0] - initial_token0_balance)/(10**_token0.decimals())}"
-    )

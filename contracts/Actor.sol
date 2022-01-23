@@ -54,12 +54,14 @@ contract Actor is FlashLoanReceiverBase, Ownable {
     // before you execute this batch flash.
     function requestFlashLoanAndAct(
         address[] memory _tokenAddresses,
-        uint256[] memory amounts
+        uint256[] memory amounts,
+        uint8 minDexIndex
     ) public onlyOwner {
-        // !!! Does the onlyOwner here prevent grieffing attacks?
+        // TODO: Does the onlyOwner here prevent grieffing attacks?
         address receiverAddress = address(this);
         uint256[] memory modes = new uint256[](amounts.length);
-        bytes memory params;
+        // TODO: is it faster if I encode in python?
+        bytes memory params = abi.encode(uint8(minDexIndex));
 
         for (uint256 i = 0; i < amounts.length; i++) {
             // 0 = no debt, 1 = stable, 2 = variable
@@ -107,19 +109,20 @@ contract Actor is FlashLoanReceiverBase, Ownable {
             );
         }
 
-        // NOTE: Instead of switching the order of the dexes if needed,
-        // we switch the order of the tokens (so instead of buying token1 in dex1 or dex0
-        // and selling token1 in dex0 or dex1, what varies is what we buy/sell)
-        // TODO: remove the arguments router0Index and router1Index from everywhere
-        // if we proceed like this
+        uint8 minDexIndex = abi.decode(params, (uint8));
+        uint8 maxDexIndex = 1;
+        if (minDexIndex == 1) {
+            maxDexIndex = 0;
+        }
+
         twoHopArbitrage(
             assets[0],
             assets[1],
             amounts[0],
             0, // minAmountOut0,
             0, // minAmountOut1,
-            0, // router0Index
-            1 // router1Index
+            minDexIndex, // router0Index
+            maxDexIndex // router1Index
         );
 
         // At the end of your logic above, this contract owes

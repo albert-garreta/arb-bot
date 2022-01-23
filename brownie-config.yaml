@@ -46,9 +46,12 @@ networks:
         uniswap_factory_address: "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f"
   ftm-main:
     # this is actually wFTM, but we keep the name weth for simplicity of code
-    weth_address: "0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83"
-    # this is USDC
-    usdt_address: "0x04068da6c83afcfa0e13ba15a6696662335d5b75"
+    token0: "0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83" # WFTM
+    token1: "0x04068DA6C83AFCFA0e13ba15A6696662335D5B75" # USDC
+    #token1: "0x049d68029688eAbF473097a2fC38ef61633A3C7A" #fUSDT
+    #token1: "0x6c021Ae822BEa943b2E66552bDe1D2696a53fbB7" #TOMB
+    #token0: "0x74b23882a30290451A17c44f4F05243b6b58C76d" #WETH
+    wrapped_main_token_address: "0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83"
     lending_pool_addresses_provider_address: "0x6c793c628Fe2b480c5e6FB7957dDa4b9291F9c9b"
     dex_addresses:
       default_dex: "spiritswap"
@@ -60,9 +63,9 @@ networks:
         uniswap_factory_address: "0xEF45d134b73241eDa7703fa787148D9C9F4950b0"
   ftm-test:
     # this is actually wFTM, but we keep the name weth for simplicity of code
-    weth_address: "0xf1277d1Ed8AD466beddF92ef448A132661956621"
+    token1: "0xf1277d1Ed8AD466beddF92ef448A132661956621"
     # unclear what address to be used here
-    usdt_address: "0x076877073D287Ee8c10878B190d7166367899fdA"
+    token0: "0x076877073D287Ee8c10878B190d7166367899fdA"
     lending_pool_addresses_provider_address: "0x6c793c628Fe2b480c5e6FB7957dDa4b9291F9c9b"
     dex_addresses:
       default_dex: "spiritswap"
@@ -74,7 +77,7 @@ networks:
         uniswap_factory_address: "0xEF45d134b73241eDa7703fa787148D9C9F4950b0"
   ftm-main-fork:
     token0: "0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83" # WFTM
-    token1: "0x04068da6c83afcfa0e13ba15a6696662335d5b75" # USDC
+    token1: "0x049d68029688eAbF473097a2fC38ef61633A3C7A" # USDC
     wrapped_main_token_address: "0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83"
     # usdt_address: "0x6c021Ae822BEa943b2E66552bDe1D2696a53fbB7" # TOMB
     # usdt_address: "0x4cdF39285D7Ca8eB3f090fDA0C069ba5F4145B37" # TSHARE
