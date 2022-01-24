@@ -19,6 +19,13 @@ def get_pair_price_full(_dex_name, _verbose=False):
     return get_pair_price_via_pool_reserves(data, _dex_name, _verbose)
 
 
+def inner_price_calc(_reserve0, _amount0, _dex_fee, _reserve1,_amount1, _decimals0):
+    # this includes the change of price that buying 1 of asset1
+    # with asset0 causes
+    amount_out = _amount0*_dex_fee *_reserve1 /(_reserve0 + _dex_fee*_amount0)
+    return 1/amount_out
+
+
 def get_pair_price_via_pool_reserves(_pair_dex_data, dex_name, _verbose=False):
     pair_data = _pair_dex_data["pair_data"]
     token_data = _pair_dex_data["token_data"]
@@ -36,11 +43,15 @@ def get_pair_price_via_pool_reserves(_pair_dex_data, dex_name, _verbose=False):
     if not reversed_order:
         reserve0 *= 10 ** (max(decimals0, decimals1) - decimals0)
         reserve1 *= 10 ** (max(decimals0, decimals1) - decimals1)
-        price = reserve0 / reserve1
+        price = inner_price_calc(reserve0, reserve1, decimals0)  # reserve0 / reserve1
+        # print(price)
+        # price = reserve0 / reserve1
     else:
         reserve1 *= 10 ** (max(decimals0, decimals1) - decimals0)
         reserve0 *= 10 ** (max(decimals0, decimals1) - decimals1)
-        price = reserve1 / reserve0
+        price = inner_price_calc(reserve1, reserve0, decimals1)  # reserve1 / reserve0
+        # print(price)
+        # price = reserve1 / reserve0
 
     # Now we can compute de price
     # See uniswap v2 withepaper

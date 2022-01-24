@@ -34,3 +34,14 @@ extra_cover = 0.1
 amount_to_borrow = 0.01 * amount_for_fees * 100 / lending_pool_fee
 
 amount_to_borrow_wei = Web3.toWei(amount_to_borrow, "ether")
+
+
+# Currently just a placeholder for quick debugging
+from pycoingecko import CoinGeckoAPI
+
+cg = CoinGeckoAPI()
+
+
+def coingecko_price():
+    coin = "fantom"
+    return 1 / cg.get_price(ids=coin, vs_currencies="usd")[coin]["usd"]

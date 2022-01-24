@@ -1,3 +1,4 @@
+from tkinter import E
 from brownie import chain, config, network
 import time
 from scripts.deploy import deploy_actor
@@ -15,6 +16,7 @@ import bot_config
 from web3 import Web3
 import sys
 from datetime import date, datetime
+
 
 MAIN_NETWORKS = ["ftm-main", "mainnet"]
 
@@ -52,11 +54,13 @@ def rebooter(function):
     def wrapped_fun(*args, **kwargs):
         try:
             return function(*args, **kwargs)
-        except:
-            return wrapped_fun(*args, **kwargs)
+        except Exception as e:
+            if not bot_config.debug_mode:
+                return wrapped_fun(*args, **kwargs)
+            else:
+                print(e)
 
     return wrapped_fun
-
 
 @rebooter
 def run_bot(all_dex_to_pair_data, actor):

@@ -4,6 +4,7 @@ from scripts.prices import get_pair_price_via_pool_reserves
 import bot_config
 import numpy as np
 
+
 def get_price_spread(_pair_dex_data, _verbose=False):
     """[summary]
 
@@ -21,6 +22,9 @@ def get_price_spread(_pair_dex_data, _verbose=False):
         prices.append(price)
         if _verbose:
             print(f"The token1/token0 price via pool reserves in {dex_name} is {price}")
+            if bot_config.dex_names:
+                # Currently just a placeholder for quick debugging
+                print(f"The price in Coingecko is {bot_config.coingecko_price()}")
     max_delta = max(prices) - min(prices)
     max_index = np.argmax(prices)
     min_index = np.argmin(prices)

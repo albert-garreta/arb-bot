@@ -32,6 +32,7 @@ def prepare_actor(_all_dex_to_pair_data, _actor):
         # TODO: Is it dangerous to make the transfer now? (grieffing attack?)
         print(f"Transferring {name0} to Actor...")
         # TODO: Check if this can be done just with a transfer
+        # POSSIBLE ANSWER: I think so, but must add PAYABLE to Actor. <- Check
         tx = token0.transferFrom(
             account.address,
             _actor.address,

@@ -115,10 +115,11 @@ contract Actor is FlashLoanReceiverBase, Ownable {
             maxDexIndex = 0;
         }
 
-        twoHopArbitrage(
+        doSwaps(
             assets[0],
             assets[1],
             amounts[0],
+            amounts[1],
             0, // minAmountOut0,
             0, // minAmountOut1,
             minDexIndex, // router0Index
@@ -139,10 +140,11 @@ contract Actor is FlashLoanReceiverBase, Ownable {
         return true;
     }
 
-    function twoHopArbitrage(
+    function doSwaps(
         address _token0Address,
         address _token1Address,
-        uint256 _amountIn,
+        uint256 _amount0,
+        uint256 _amount1,
         uint256 _minAmountOut0,
         uint256 _minAmountOut1,
         uint8 _router0Index,
@@ -154,7 +156,7 @@ contract Actor is FlashLoanReceiverBase, Ownable {
         uint256[] memory amountsOut = swapExactTokensForTokens(
             _token0Address,
             _token1Address,
-            _amountIn,
+            _amount0,
             _minAmountOut0,
             _router0Index
         );
@@ -166,7 +168,7 @@ contract Actor is FlashLoanReceiverBase, Ownable {
         amountsOut = swapExactTokensForTokens(
             _token1Address,
             _token0Address,
-            amountsOut[1],
+            _amount1,
             _minAmountOut1,
             _router1Index
         );
