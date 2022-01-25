@@ -1,9 +1,9 @@
 from tkinter import E
 from brownie import chain, config, network
-import time
+import time, warnings, sys, getopt
 from scripts.deploy import deploy_actor
 from scripts.data import get_all_dex_to_pair_data
-from scripts.search_arb_oportunity import get_price_spread
+from scripts.prices import get_approx_price_spread
 from scripts.utils import (
     deposit_main_token_into_wrapped_version,
     get_account,
@@ -19,17 +19,6 @@ from datetime import date, datetime
 
 
 MAIN_NETWORKS = ["ftm-main", "mainnet"]
-
-
-class Logger(object):
-    def __init__(self, _pair_name, _dex_name):
-        self.pair = _pair_name
-        self.dex = _dex_name
-        self.min_spread = 0.3
-        self.spread_history = pd.DataFrame(columns=["date", "spread"])
-
-    def log(self, _spread):
-        pass
 
 
 def preprocess():
@@ -55,12 +44,13 @@ def rebooter(function):
         try:
             return function(*args, **kwargs)
         except Exception as e:
-            if not bot_config.debug_mode:
+            if bot_config.rebooter_bot:
                 return wrapped_fun(*args, **kwargs)
             else:
-                print(e)
+                raise e
 
     return wrapped_fun
+
 
 @rebooter
 def run_bot(all_dex_to_pair_data, actor):
@@ -94,16 +84,20 @@ def run_epoch(_all_dex_to_pair_data, _actor):
 
 
 def look_for_arbitrage(_all_dex_to_pair_data):
-    spread, max_dex_index, min_dex_index = get_price_spread(
+    final_profit, max_dex_index, min_dex_index = get_approx_price_spread(
         _all_dex_to_pair_data, _verbose=True
     )
-    if spread > bot_config.min_spread:
+    initial_amt = round(bot_config.amount_to_borrow_token0_wei, 3)
+    final_profit_ratio = round(final_profit / initial_amt, 3)
+    if final_profit_ratio > bot_config.min_final_profit_ratio:
         print("ACT\n")
-        # TODO: to implement
-        slippage_tolerance = spread - bot_config.min_spread
+        final_profit = round(final_profit, 3)
         with open("./reports/actions.txt", "a") as f:
-            f.write(f"{datetime.now()}- Acting for non-taxed profit {spread}\n")
-        return spread, max_dex_index, min_dex_index
+            f.write(
+                f"{datetime.now()}- Acting for non-taxed profit {final_profit_ratio}. "
+                f"Gains {final_profit}\n"
+            )
+        return final_profit_ratio, max_dex_index, min_dex_index
     else:
         return None
 
@@ -141,7 +135,32 @@ def epoch_due(block_number):
     Returns a boolean indicating whether block_number is the number of the most recent block mined
     Returns: bool
     """
-    return get_latest_block_number() - block_number >= bot_config.blocks_to_wait
+    try:
+        """FIXME: Currently sometimes I get the following error when retrievient blocks:
+        File "./scripts/bot.py", line 156, in get_latest_block_number
+            latest_block_number = chain[-1]["number"]
+          File "brownie/network/state.py", line 240, in __getitem__
+            block = web3.eth.get_block(block_number)
+          File "web3/eth.py", line 589, in get_block
+            return self._get_block(block_identifier, full_transactions)
+          File "web3/module.py", line 57, in caller
+            result = w3.manager.request_blocking(method_str,
+          File "web3/manager.py", line 198, in request_blocking
+            return self.formatted_response(response,
+          File "web3/manager.py", line 177, in formatted_response
+            apply_null_result_formatters(null_result_formatters, response, params)
+          File "web3/manager.py", line 82, in apply_null_result_formatters
+            formatted_resp = pipe(params, null_result_formatters)
+          File "cytoolz/functoolz.pyx", line 667, in cytoolz.functoolz.pipe
+          File "cytoolz/functoolz.pyx", line 642, in cytoolz.functoolz.c_pipe
+          File "web3/_utils/method_formatters.py", line 630, in raise_block_not_found
+            raise BlockNotFound(message)
+        BlockNotFound: Block with id: '0x1baba25' not found."""
+        latest_block_num = get_latest_block_number()
+        return latest_block_num - block_number >= bot_config.blocks_to_wait
+    except:
+        warnings.warn("Retrieving block number failed. Proceeding anyway")
+        return True
 
 
 def get_latest_block_number():
@@ -153,5 +172,6 @@ def get_latest_block_number():
 
 
 def main():
+
     all_dex_to_pair_data, actor = preprocess()
     run_bot(all_dex_to_pair_data, actor)

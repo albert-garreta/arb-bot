@@ -10,37 +10,6 @@ ETH_NETWORKS = ["mainnet", "mainnet-fork", "kovan"]
 FTM_NETWORKS = ["ftm-main", "ftm-main-fork", "ftm-test"]
 
 
-def linear_programming(
-    initial_equitiy,
-    price_tkn1_in_tkn0_dex0,
-    price_tkn0_in_tkn1_dex1,
-    fee_dex0,
-    fee_dex1,
-    flashloan_fee,
-):
-    a = fee_dex0 / price_tkn1_in_tkn0_dex0
-    b = fee_dex1 / price_tkn0_in_tkn1_dex1
-    c = flashloan_fee
-    bounds = [[0, None], [0, None], [0, initial_equitiy]]
-    C = [-a + c, -b + c, 0]
-    A_ub = [[-a, c, -1], [c, -b, 1 / price_tkn0_in_tkn1_dex1]]
-    # A_ub = [[-a, c], [c, -b], [-1, 1 / price_tkn0_in_tkn1_dex1]]
-    b_ub = [0, initial_equitiy]
-    res = linprog(
-        C,
-        A_ub=A_ub,
-        b_ub=b_ub,
-        A_eq=None,
-        b_eq=None,
-        bounds=bounds,
-    )
-    print(res)
-
-
-print(linear_programming(100, 2000, 1 / 2100, 0.998, 0.998, 1.09))
-print(linear_programming(1, 100, 1 / 100.1, 0.998, 0.998, 1.09))
-
-
 def get_address(_name):
     # This line of code is used so often that maybe it is better to have
     # a short-hand version of it
@@ -165,3 +134,39 @@ def deploy_mocks():
     Use this script if you want to deploy mocks to a testnet
     """
     pass
+
+
+def print_args_wrapped(fun):
+    def w_fun(*args, **kwargs):
+        print(*args)
+        print(**kwargs)
+        return fun(*args, **kwargs)
+
+    return w_fun
+
+
+# def linear_programming(
+#     initial_equitiy,
+#     price_tkn1_in_tkn0_dex0,
+#     price_tkn0_in_tkn1_dex1,
+#     fee_dex0,
+#     fee_dex1,
+#     flashloan_fee,
+# ):
+#     a = fee_dex0 / price_tkn1_in_tkn0_dex0
+#     b = fee_dex1 / price_tkn0_in_tkn1_dex1
+#     c = flashloan_fee
+#     bounds = [[0, None], [0, None], [0, initial_equitiy]]
+#     C = [-a + c, -b + c, 0]
+#     A_ub = [[-a, c, -1], [c, -b, 1 / price_tkn0_in_tkn1_dex1]]
+#     # A_ub = [[-a, c], [c, -b], [-1, 1 / price_tkn0_in_tkn1_dex1]]
+#     b_ub = [0, initial_equitiy]
+#     res = linprog(
+#         C,
+#         A_ub=A_ub,
+#         b_ub=b_ub,
+#         A_eq=None,
+#         b_eq=None,
+#         bounds=bounds,
+#     )
+#     print(res)

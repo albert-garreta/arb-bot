@@ -99,11 +99,10 @@ def test_request_flashloan_and_act():
 
     price_in_dex0 = get_pair_price_full(bot_config.dex_names[0])
     price_in_dex1 = get_pair_price_full(bot_config.dex_names[1])
-    prices=[price_in_dex0, price_in_dex1]
+    prices = [price_in_dex0, price_in_dex1]
     print(f"Prices: {prices}")
-    max_spread = (max(prices)-min(prices))/min(prices)
-    print(f'Max spread: {max_spread}')
-    
+    max_spread = (max(prices) - min(prices)) / min(prices)
+    print(f"Max spread: {max_spread}")
 
     print("Requesting flash loan and acting...")
 

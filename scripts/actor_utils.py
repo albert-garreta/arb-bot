@@ -1,6 +1,7 @@
 import bot_config
 from scripts.utils import get_account
 
+
 def prepare_actor(_all_dex_to_pair_data, _actor):
     """Preliminary steps to the flashloan request and actions which can be done beforehand"""
 
