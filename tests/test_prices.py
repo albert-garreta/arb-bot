@@ -19,7 +19,6 @@ DEXES = bot_config.dex_names
 amount_in = bot_config.amount_to_borrow_token0_wei
 
 
-
 def test_get_dex_amount_out_and_get_approx_price():
     def inner_fun(
         reserve0, reserve1, amount_in, fee=0.2, slippage=bot_config.approx_slippage
@@ -30,7 +29,7 @@ def test_get_dex_amount_out_and_get_approx_price():
         # Price taking into account the changes of balances in the LP pool
         print(amount_in / amt_out)
 
-        approx_price = get_approx_price(reserve0, reserve1)
+        approx_price = get_approx_price([reserve0, reserve1], buying=True)
         print(approx_price)
         print("")
 

@@ -3,7 +3,12 @@ from brownie import chain, config, network
 import time, warnings, sys, getopt
 from scripts.deploy import deploy_actor
 from scripts.data import get_all_dex_to_pair_data
-from scripts.prices import get_arbitrage_profit_info, get_reserves
+from scripts.prices import (
+    get_approx_price,
+    get_arbitrage_profit_info,
+    get_reserves,
+    get_net_profit,
+)
 from scripts.utils import (
     deposit_main_token_into_wrapped_version,
     get_account,
@@ -16,6 +21,7 @@ import bot_config
 from web3 import Web3
 import sys
 from datetime import date, datetime
+import warnings
 
 
 MAIN_NETWORKS = ["ftm-main", "mainnet"]
@@ -27,9 +33,10 @@ def preprocess():
         in LOCAL_BLOCKCHAIN_ENVIRONMENTS + NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS
     ):
         deposit_main_token_into_wrapped_version(
-            Web3.toWei(bot_config.amount_for_fees + bot_config.extra_cover, "ether")
+            bot_config.amount_for_fees + bot_config.extra_cover
         )
 
+    all_dex_to_pair_data = get_all_dex_to_pair_data()
     all_dex_to_pair_data = get_all_dex_to_pair_data()
     if not bot_config.debug_mode:
         actor = deploy_actor()
@@ -95,46 +102,66 @@ def look_for_arbitrage(reserves_all_dexes):
         final_profit_ratio,
         optimal_amount_in,
         final_amount_out,
-        max_dex_index,
-        min_dex_index,
+        buying_dex_index,
+        selling_dex_index,
     ) = get_arbitrage_profit_info(
-        bot_config.amount_to_borrow_token0_wei,
         reserves_all_dexes,
         bot_config.dex_fees,
         bot_config.approx_slippages,
         bot_config.lending_pool_fee,
         _verbose=True,
     )
-    if final_profit_ratio > bot_config.min_final_profit_ratio:
+    if (
+        final_profit_ratio > bot_config.min_final_profit_ratio
+        and final_amount_out / 1e18 > bot_config.min_final_amount_out
+    ):
         final_amount_out = round(final_amount_out / 1e18, 3)
         final_profit_ratio = round(final_profit_ratio, 3)
         print("ACT\n")
         with open("./reports/actions.txt", "a") as f:
             f.write(
                 f"{datetime.now()} - ACT\n"
-                f"Reserves buying dex: {reserves_all_dexes[max_dex_index]}\n"
-                f"Reserves selling dex: {reserves_all_dexes[min_dex_index]}\n"
+                f"Reserves buying dex: {reserves_all_dexes[buying_dex_index]}\n"
+                f"Reserves selling dex: {reserves_all_dexes[selling_dex_index]}\n"
                 f"Profit ratio {final_profit_ratio}.\n"
                 f"Optimal amount in {optimal_amount_in/1e18}\n"
                 f"Gains (in token0) {final_amount_out}\n\n"
             )
-        return final_profit_ratio, max_dex_index, min_dex_index
+        tkn0_to_buy = 0.5 * optimal_amount_in
+        price_tkn1_to_tkn0 = get_approx_price(
+            reserves_all_dexes[buying_dex_index], buying=True
+        )
+        tkn1_to_sell = 0.5 * optimal_amount_in / price_tkn1_to_tkn0
+        return (  # TODO: create structure for this data
+            final_profit_ratio,
+            tkn0_to_buy,
+            tkn1_to_sell,
+            final_amount_out,
+            buying_dex_index,
+            selling_dex_index,
+        )
+
     else:
         return None
 
 
 def act(_all_dex_to_pair_data, arb_info, _actor, _verbose=True):
-    spread, max_dex_index, min_dex_index = arb_info
-    token0, names0, decimals0 = _all_dex_to_pair_data["token_data"][
-        bot_config.token_names[0]
-    ]
+    (
+        final_profit_ratio,
+        amount_tkn0_to_buy,
+        amount_tkn1_to_sell,
+        buying_dex_index,
+        selling_dex_index,
+    ) = arb_info
     account = get_account()
     print("Requesting flash loan and swapping...")
+
     try:
         tx = _actor.requestFlashLoanAndAct(
             get_token_addresses(bot_config.token_names),
-            [bot_config.amount_to_borrow_wei, 0],
-            min_dex_index,
+            [amount_tkn0_to_buy, amount_tkn1_to_sell],
+            buying_dex_index,
+            selling_dex_index,
             {"from": account},
         )
         tx.wait(1)

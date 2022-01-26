@@ -12,13 +12,6 @@ class dotdict(dict):
     __setattr__ = dict.__setitem__
     __delattr__ = dict.__delitem__
 
-    def unpack(self):
-        pair_data = self["pair_data"]
-        token_data = self["token_data"]
-        pair, reversed_order = pair_data[dex_name]
-        token0, name0, decimals0 = self["token_data"][bot_config.token_names[0]]
-        token1, name1, decimals1 = self["token_data"][bot_config.token_names[1]]
-
 
 def get_all_dex_to_pair_data():
     # TODO: should this and the following be placed here?

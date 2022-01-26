@@ -5,11 +5,9 @@ import bot_config
 import numpy as np
 from scipy.optimize import minimize_scalar
 
-# @print_args_wrapped
-
 
 def get_arbitrage_profit_info(
-    _amount_in, _reserves, _dex_fees, _slippages, _lending_pool_fee, _verbose=False
+    _reserves, _dex_fees, _slippages, _lending_pool_fee, _verbose=False
 ):
     """[summary]
 
@@ -18,7 +16,11 @@ def get_arbitrage_profit_info(
         _verbose (bool, optional): [description]. Defaults to False.
 
     Returns:
-        (float, int, int): (max_price_spread, most expensive dex, cheapest dex)
+        final_profit_ratio,
+        opt_amount_in,
+        opt_amount_out,
+        buying_dex_index,
+        (buying_dex_index + 1) % 2,
     """
 
     # buying/selling dex: dex_names[max/min_index]
@@ -28,27 +30,12 @@ def get_arbitrage_profit_info(
 
     # FIXME: what is a good amount in to pass here? (Amount in may affect the choice of
     # buying dex)
-    buying_dex_index, selling_dex_index = determine_buying_and_selling_dex(
-        _amount_in, _reserves, _dex_fees, _slippages, _lending_pool_fee, _verbose
+    buying_dex_index, opt_amount_in, opt_amount_out = get_buying_dex_and_amounts_in_out(
+        _reserves, _dex_fees, _slippages, _lending_pool_fee, _verbose
     )
-    buying_dex_fee = _dex_fees[buying_dex_index]
-    selling_dex_fee = _dex_fees[selling_dex_index]
-    reserves_buying_dex = _reserves[buying_dex_index]
-    reserves_selling_dex = _reserves[selling_dex_index]
-    slippage_buy_dex = _slippages[buying_dex_index]
-    slippage_sell_dex = _slippages[selling_dex_index]
 
-    opt_amount_in, opt_amount_out = get_optimal_amount_in(
-        reserves_buying_dex,
-        reserves_selling_dex,
-        buying_dex_fee,
-        selling_dex_fee,
-        slippage_buy_dex,
-        slippage_sell_dex,
-        _lending_pool_fee,
-        _return_optimal_amount_out=True,
-        _verbose=_verbose,
-    )
+    reserves_buying_dex = _reserves[buying_dex_index]
+    reserves_selling_dex = _reserves[(buying_dex_index + 1) % 2]
 
     final_profit_ratio = ((opt_amount_out / opt_amount_in)) * 100
 
@@ -57,7 +44,7 @@ def get_arbitrage_profit_info(
     # max_price_spread = 100 * max_delta / min(prices)
     if _verbose:
         print(f"Buying dex: {bot_config.dex_names[buying_dex_index]}")
-        print(f"Selling dex: {bot_config.dex_names[selling_dex_index]}")
+        print(f"Selling dex: {bot_config.dex_names[(buying_dex_index + 1) % 2]}")
         print(f"Reserves buing dex: {reserves_buying_dex}")
         print(f"Reserves selling dex: {reserves_selling_dex}")
         print(f"Optimal amount in: {opt_amount_in/1e18}")
@@ -68,12 +55,12 @@ def get_arbitrage_profit_info(
         opt_amount_in,
         opt_amount_out,
         buying_dex_index,
-        selling_dex_index,
+        (buying_dex_index + 1) % 2,
     )
 
 
-def determine_buying_and_selling_dex(
-    _amount_in, _reserves, _dex_fees, _slippages, _lending_pool_fee, _verbose=False
+def get_buying_dex_and_amounts_in_out(
+    _reserves, _dex_fees, _slippages, _lending_pool_fee, _verbose=False
 ):
     """[summary]
 
@@ -88,49 +75,55 @@ def determine_buying_and_selling_dex(
         (int, int): (index of the buying dex, index of the selling dex)
     """
 
-    # Does the buying/selling dex depend on the amount in?
-    # ANSWER: It does: see my notes.
-    # FIXME: Are my notes wrong? Should we make the calculation
-    # using the function `get net profit` instead? The problem is
-    # roughly, that in my notes I don't take into consideration
-    # that the amount sold also affects the price.
-    # NOTE: It may be best to use an initial estimate
-    # for the amount in when determining the buying/selling dex
-
-    amounts_out = []
-    amount_in = _amount_in
-    amt_in_tkn0_0 = amount_in / 2
+    opt_amounts_in = []
+    opt_amounts_out = []
     for dex_index, dex_name in enumerate(bot_config.dex_names):
-        # This includes the trading fees of the dexes and the price alterations of our
-        # swap. It does not include slippage nor the fees from the flashloan.
+        # Check the two combinatios of buying/selling dexes and see with wich one
+        # we get better net profits
+
         reserve0, reserve1 = _reserves[
             dex_index
         ]  # get_reserves(_pair_dex_data, dex_index, _verbose=True)
+        reserves_buying_dex = _reserves[dex_index]
+        reserves_selling_dex = _reserves[(dex_index + 1) % 2]
+        fees_buying_dex = _dex_fees[dex_index]
+        fees_selling_dex = _dex_fees[(dex_index + 1) % 2]
+        slippage_buy_dex = _slippages[dex_index]
+        slippage_sell_dex = _slippages[(dex_index + 1) % 2]
 
-        amount_out = get_dex_ammount_out(
-            reserve0,
-            reserve1,
-            amt_in_tkn0_0,
-            _dex_fees[dex_index],
-            _slippages[dex_index],
+        opt_amount_in, opt_amount_out = get_optimal_amount_in(
+            reserves_buying_dex,
+            reserves_selling_dex,
+            fees_buying_dex,
+            fees_selling_dex,
+            slippage_buy_dex,
+            slippage_sell_dex,
+            _lending_pool_fee,
+            bot_config.max_amount_in,
+            _return_optimal_amount_out=True,
+            _verbose=False,
         )
 
-        amounts_out.append(amount_out)
+        opt_amounts_in.append(opt_amount_in)
+        opt_amounts_out.append(opt_amount_out)
         if _verbose:
             print(
                 f"The token1/token0 price "
                 f"in {dex_name} is approx (frictionless) "
-                f"{get_approx_price(reserve0, reserve1)}\n"
-                f"Amount out: {amount_out/1e18}"
+                f"{get_approx_price(_reserves[dex_index], buying=True)}\n"
+                f"Optimal amount in: {opt_amount_in/1e18}\n"
+                f"Optimal amount out: {opt_amount_out/1e18}"
             )
             if bot_config.debug_mode:
                 # Currently just a placeholder for quick debugging
                 # print(f"The price in Coingecko is {bot_config.coingecko_price()}")
                 pass
-    max_index = np.argmax(amounts_out)
-    min_index = np.argmin(amounts_out)
 
-    return max_index, min_index
+    buying_dex_index = np.argmax(opt_amounts_out)
+    optimal_amount_in = opt_amounts_in[buying_dex_index]
+    optimal_amount_out = opt_amounts_out[buying_dex_index]
+
+    return buying_dex_index, optimal_amount_in, optimal_amount_out
 
 
 def get_net_profit_functional(*args):
@@ -150,7 +143,24 @@ def get_net_profit(
     _slippage_sell_dex,
     _lending_fee,
 ):
+    """[summary]
+
+    Args:
+        _amount_in ([type]): [description]
+        _reserves_buying_dex ([type]): [description]
+        _reserves_selling_dex ([type]): [description]
+        _fees_buy_dex ([type]): [description]
+        _fees_sell_dex ([type]): [description]
+        _slippage_buy_dex ([type]): [description]
+        _slippage_sell_dex ([type]): [description]
+        _lending_fee ([type]): [description]
+
+    Returns:
+        float: net_profit
+    """
     # TODO: Create a structure (a dictionary) for these arguments?
+
+    # TODO: FIXME: instead of splitting into two halves, can we optimize the split ratio?
     amt_in_tkn0_0 = _amount_in / 2
 
     amt_out_tkn1_0 = get_dex_ammount_out(
@@ -162,12 +172,7 @@ def get_net_profit(
     # really done before the flashloan? I always can flashloan a little more
     # in order to make sure I have this amt_in_tok1 to sell at the best selling dex now
 
-    # FIXME: Note that this amount has already been computed once when determining
-    # the buying and selling dex. It is a small computation and probably
-    # it is unnecessary to address this
-    amt_in_tkn1_1 = amt_in_tkn0_0 / get_approx_price(
-        _reserves_buying_dex[0], _reserves_buying_dex[1]
-    )
+    amt_in_tkn1_1 = amt_in_tkn0_0 / get_approx_price(_reserves_buying_dex, buying=True)
 
     # Sell amt_in_tokn1 in the selling dex
     amt_out_tkn0_1 = get_dex_ammount_out(
@@ -179,7 +184,7 @@ def get_net_profit(
     )
 
     amt_out_tkn0_0 = amt_out_tkn1_0 / get_approx_price(
-        _reserves_selling_dex[1], _reserves_selling_dex[0]
+        _reserves_selling_dex, buying=False
     )
     final_amount_out = amt_out_tkn0_0 + amt_out_tkn0_1
     final_amount_out -= (1 + (_lending_fee / 100)) * _amount_in
@@ -197,8 +202,12 @@ def get_dex_ammount_out(_reserve0, _reserve1, _amount_in, _dex_fee, _slippage):
     return amount_out
 
 
-def get_approx_price(_reserve0, _reserve1):
-    return _reserve0 / _reserve1
+def get_approx_price(_dex_reserves, buying=True):
+    reserve0, reserve1 = _dex_reserves
+    if buying:
+        return reserve0 / reserve1
+    else:
+        return reserve1 / reserve0
 
 
 def get_reserves(_pair_dex_data, _dex_index, _verbose=False):
@@ -231,6 +240,7 @@ def get_optimal_amount_in(
     _slippage_buy_dex,
     _slippage_sell_dex,
     _lending_fee,
+    _max_amount_in,
     _return_optimal_amount_out=False,
     _verbose=False,
 ):
@@ -258,7 +268,7 @@ def get_optimal_amount_in(
 
     _f = reverse(f)
 
-    res = minimize_scalar(_f, bounds=(0, 1e30), method="bounded")
+    res = minimize_scalar(_f, bounds=(0, _max_amount_in), method="bounded")
     optimal_amount_in = res.x
     if _verbose:
         print(f"Optimal initial amount: {optimal_amount_in}")

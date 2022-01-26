@@ -55,13 +55,14 @@ contract Actor is FlashLoanReceiverBase, Ownable {
     function requestFlashLoanAndAct(
         address[] memory _tokenAddresses,
         uint256[] memory amounts,
-        uint8 minDexIndex
+        uint8 buyingDexIndex,
+        uint8 sellingDexIndex
     ) public onlyOwner {
         // TODO: Does the onlyOwner here prevent grieffing attacks?
         address receiverAddress = address(this);
         uint256[] memory modes = new uint256[](amounts.length);
         // TODO: is it faster if I encode in python?
-        bytes memory params = abi.encode(uint8(minDexIndex));
+        bytes memory params = abi.encode(uint8(sellingDexIndex));
 
         for (uint256 i = 0; i < amounts.length; i++) {
             // 0 = no debt, 1 = stable, 2 = variable
@@ -109,10 +110,10 @@ contract Actor is FlashLoanReceiverBase, Ownable {
             );
         }
 
-        uint8 minDexIndex = abi.decode(params, (uint8));
-        uint8 maxDexIndex = 1;
-        if (minDexIndex == 1) {
-            maxDexIndex = 0;
+        uint8 sellingDexIndex = abi.decode(params, (uint8));
+        uint8 buyingDexIndex = 1;
+        if (sellingDexIndex == 1) {
+            buyingDexIndex = 0;
         }
 
         doSwaps(
@@ -122,8 +123,8 @@ contract Actor is FlashLoanReceiverBase, Ownable {
             amounts[1],
             0, // minAmountOut0,
             0, // minAmountOut1,
-            minDexIndex, // router0Index
-            maxDexIndex // router1Index
+            buyingDexIndex, // router0Index
+            sellingDexIndex // router1Index
         );
 
         // At the end of your logic above, this contract owes
@@ -134,6 +135,11 @@ contract Actor is FlashLoanReceiverBase, Ownable {
         // Approve the LendingPool contract allowance to *pull* the owed amount
         for (uint256 i = 0; i < assets.length; i++) {
             uint256 amountOwing = amounts[i] + premiums[i];
+            // TODO: check if the transaction reverts if we lost money
+            require(
+                IERC20(assets[i]).balanceOf(initiator) - amountOwing >= 0,
+                "amountOwing is greater than the flashloan initiatior balance"
+            );
             IERC20(assets[i]).approve(address(LENDING_POOL), amountOwing);
         }
 
@@ -147,8 +153,8 @@ contract Actor is FlashLoanReceiverBase, Ownable {
         uint256 _amount1,
         uint256 _minAmountOut0,
         uint256 _minAmountOut1,
-        uint8 _router0Index,
-        uint8 _router1Index
+        uint8 _buyingDexIndex,
+        uint8 _sellingDexIndex
     ) public {
         // tx = _token0.approve(_swapper.address, _amount_in, {"from": account})
         // tx.wait(1)
@@ -158,7 +164,7 @@ contract Actor is FlashLoanReceiverBase, Ownable {
             _token1Address,
             _amount0,
             _minAmountOut0,
-            _router0Index
+            _buyingDexIndex
         );
 
         // Only for testing
@@ -170,7 +176,7 @@ contract Actor is FlashLoanReceiverBase, Ownable {
             _token0Address,
             _amount1,
             _minAmountOut1,
-            _router1Index
+            _sellingDexIndex
         );
         // Only for testing
         swapReturns.push(amountsOut[1]);
@@ -180,7 +186,7 @@ contract Actor is FlashLoanReceiverBase, Ownable {
         public
         onlyOwner
     {
-        // TODO: send gains to user. Important for security
+        // Send gains to user. Important to prevent grieffing attacks
         for (uint256 i = 0; i < _tokenAddresses.length; i++) {
             // TODO: not loop over all list, but only those where the balance is >0
             IERC20 token = IERC20(_tokenAddresses[i]);
@@ -193,13 +199,13 @@ contract Actor is FlashLoanReceiverBase, Ownable {
         address _tokenOutAddress,
         uint256 _amountIn,
         uint256 _minAmountOut,
-        uint256 _routerIndex
+        uint256 _dexIndex
     ) public returns (uint256[] memory) {
         // No need to do this step in the second swap of the
         // twoHorpArbitrage function
 
         IERC20 tokenIn = IERC20(_tokenInAddress);
-        tokenIn.approve(address(swapRouters[_routerIndex]), _amountIn);
+        tokenIn.approve(address(swapRouters[_dexIndex]), _amountIn);
 
         // require(
         //     tokenIn.allowance(
@@ -213,7 +219,7 @@ contract Actor is FlashLoanReceiverBase, Ownable {
         path[0] = _tokenInAddress;
         path[1] = _tokenOutAddress;
 
-        uint256[] memory amounts = swapRouters[_routerIndex]
+        uint256[] memory amounts = swapRouters[_dexIndex]
             .swapExactTokensForTokens(
                 _amountIn,
                 _minAmountOut, // min amount out

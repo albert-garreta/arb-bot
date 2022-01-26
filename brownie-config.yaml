@@ -73,8 +73,9 @@ networks:
         swap_router_V2_address: "0xcCAFCf876caB8f9542d6972f87B5D62e1182767d"
         uniswap_factory_address: "0x5D479c2a7FB79E12Ac4eBBAeDB0322B4d5F9Fd02"
       spiritswap:
-        swap_router_V2_address: "0x16327E3FbDaCA3bcF7E38F5Af2599D2DDc33aE52"
-        uniswap_factory_address: "0xEF45d134b73241eDa7703fa787148D9C9F4950b0"
+        # currently these are spookyswap's addresses. Couldn't find spirit's addresses
+        swap_router_V2_address: #"0xcCAFCf876caB8f9542d6972f87B5D62e1182767d"
+        uniswap_factory_address: #"0x5D479c2a7FB79E12Ac4eBBAeDB0322B4d5F9Fd02"
   ftm-main-fork:
     token0: "0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83" # WFTM
     token1: "0x049d68029688eAbF473097a2fC38ef61633A3C7A" # USDC
