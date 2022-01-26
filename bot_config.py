@@ -35,10 +35,13 @@ time_between_epoch_due_checks = 0.1
 dex_names = ["spookyswap", "spiritswap"]
 # TODO: change the way tokens are named
 token_names = ["token0", "token1"]
-dex_fees = [0, 0]  # [0.2, 0.04]
-lending_pool_fee = 0.0  # Cream: 0.03. GEIST's and AAVE's: 0.09.
-approx_slippage = 0.0
-include_slippage_in_prices = True
+dex_fees = [0.2, 0.3]
+lending_pool_fee = 0.09  # Cream: 0.03. GEIST's and AAVE's: 0.09.
+
+# NOTE: I am currently estimating slippages as the price % change
+# if swapping $10k of value
+approx_slippages = [0.01, 0.05] 
+
 # min_spread = 0.1 + sum(dex_fees) + lending_pool_fee
 # The following is a correct estimate of the min spread needed
 # (0.1 is to account for slippage)

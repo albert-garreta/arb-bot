@@ -15,10 +15,10 @@ from scripts.utils import (
 
 # NOTE: All thests are done assuming that token0 is the Wrapped Main Token of the network
 
-DEPOSIT_AMOUNT_TOKEN0 = bot_config.amount_for_fees + bot_config.extra_cover
+DEPOSIT_AMOUNT_TOKEN0 = bot_config.amount_for_fees_token0 + bot_config.extra_cover
 # We pass 10% of the eth we could borrow just to rule out the possibility that the test
 # fails because actor has not enough funds after the twoHopArbitrage function
-TOKEN0_TO_BORROW = bot_config.amount_to_borrow * 0.01  # 0.01
+TOKEN0_TO_BORROW = bot_config.amount_to_borrow_token0 * 0.01  # 0.01
 TOKEN_NAMES = bot_config.token_names
 
 

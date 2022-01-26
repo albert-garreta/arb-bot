@@ -3,7 +3,7 @@ from brownie import chain, config, network
 import time, warnings, sys, getopt
 from scripts.deploy import deploy_actor
 from scripts.data import get_all_dex_to_pair_data
-from scripts.prices import get_approx_price_spread
+from scripts.prices import get_arbitrage_profit_info, get_reserves
 from scripts.utils import (
     deposit_main_token_into_wrapped_version,
     get_account,
@@ -68,12 +68,19 @@ def run_bot(all_dex_to_pair_data, actor):
                 f"Starting epoch after waiting for {time.time() - last_recorded_time}s"
             )
             last_recorded_time = time.time()
-            run_epoch(all_dex_to_pair_data, actor)
+
+            # NOTE: this is the most expensive call in a run without action.
+            reserves_all_dexes = [
+                get_reserves(all_dex_to_pair_data, dex_index)
+                for dex_index in range(len(bot_config.dex_names))
+            ]
+            run_epoch(reserves_all_dexes, reserves_all_dexes, actor)
         time.sleep(bot_config.time_between_epoch_due_checks)
 
 
-def run_epoch(_all_dex_to_pair_data, _actor):
-    arb_info = look_for_arbitrage(_all_dex_to_pair_data)
+def run_epoch(_all_dex_to_pair_data, _all_reserves, _actor):
+
+    arb_info = look_for_arbitrage(_all_reserves)
     if arb_info and not bot_config.debug_mode:
         action_successful = act(_all_dex_to_pair_data, arb_info, _actor)
         if action_successful:
@@ -83,19 +90,33 @@ def run_epoch(_all_dex_to_pair_data, _actor):
             process_failure()
 
 
-def look_for_arbitrage(_all_dex_to_pair_data):
-    final_profit, max_dex_index, min_dex_index = get_approx_price_spread(
-        _all_dex_to_pair_data, _verbose=True
+def look_for_arbitrage(reserves_all_dexes):
+    (
+        final_profit_ratio,
+        optimal_amount_in,
+        final_amount_out,
+        max_dex_index,
+        min_dex_index,
+    ) = get_arbitrage_profit_info(
+        bot_config.amount_to_borrow_token0_wei,
+        reserves_all_dexes,
+        bot_config.dex_fees,
+        bot_config.approx_slippages,
+        bot_config.lending_pool_fee,
+        _verbose=True,
     )
-    initial_amt = round(bot_config.amount_to_borrow_token0_wei, 3)
-    final_profit_ratio = round(final_profit / initial_amt, 3)
     if final_profit_ratio > bot_config.min_final_profit_ratio:
+        final_amount_out = round(final_amount_out / 1e18, 3)
+        final_profit_ratio = round(final_profit_ratio, 3)
         print("ACT\n")
-        final_profit = round(final_profit, 3)
         with open("./reports/actions.txt", "a") as f:
             f.write(
-                f"{datetime.now()}- Acting for non-taxed profit {final_profit_ratio}. "
-                f"Gains {final_profit}\n"
+                f"{datetime.now()} - ACT\n"
+                f"Reserves buying dex: {reserves_all_dexes[max_dex_index]}\n"
+                f"Reserves selling dex: {reserves_all_dexes[min_dex_index]}\n"
+                f"Profit ratio {final_profit_ratio}.\n"
+                f"Optimal amount in {optimal_amount_in/1e18}\n"
+                f"Gains (in token0) {final_amount_out}\n\n"
             )
         return final_profit_ratio, max_dex_index, min_dex_index
     else:
@@ -167,8 +188,11 @@ def get_latest_block_number():
     # Retrieve the latest block mined: chain[-1]
     # https://eth-brownie.readthedocs.io/en/stable/core-chain.html#accessing-block-information
     # Get its number
-    latest_block_number = chain[-1]["number"]
-    return latest_block_number
+    try:
+        latest_block_number = chain[-1]["number"]
+        return latest_block_number
+    except Exception as e:
+        return e
 
 
 def main():

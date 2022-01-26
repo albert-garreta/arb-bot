@@ -139,7 +139,7 @@ def deploy_mocks():
 def print_args_wrapped(fun):
     def w_fun(*args, **kwargs):
         print(*args)
-        print(**kwargs)
+        # print(**kwargs) How to print this?
         return fun(*args, **kwargs)
 
     return w_fun
