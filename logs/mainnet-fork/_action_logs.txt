@@ -1,0 +1,60 @@
+
+2022-01-27 22:36:50.434510
+Requesting flash loan and swapping...
+Expected net value gain (in token0): -0.0
+Requesting to borrow the following ammounts: 
+[0.001, 3.0]
+Fees to be paid: 
+[9e-07, 0.0027]
+Buying dex index: 0
+Selling dex index: 1
+Actor pre-loan balances: [0.05496655126576869, 122.39778751516263]
+Caller pre-loan balances: [0.002375, 0.0]
+
+
+2022-01-27 22:37:09.447963
+Success!Actor post-loan balances: [0.0, 0.0]
+Caller post-loan balances: [0.05762541841128859, 121.71943740654092]
+Amount of loans received during the flash loan: [0.001, 3.0]
+Final net profits: [2.8386714551990184e-22, -6.7835010862171425e-19]
+
+
+2022-01-27 22:37:09.448162
+Success!Actor post-loan balances: [0.0, 0.0]
+Caller post-loan balances: [0.05762541841128859, 121.71943740654092]
+Amount of loans received during the flash loan: [0.001, 3.0]
+Final net profits: [2.8386714551990184e-22, -6.7835010862171425e-19]
+
+Operation failed
+The exception is 
+
+
+2022-01-27 22:39:07.046836
+Requesting flash loan and swapping...
+Expected net value gain (in token0): -0.0
+Requesting to borrow the following ammounts: 
+[0.001, 3.0]
+Fees to be paid: 
+[9e-07, 0.0027]
+Buying dex index: 0
+Selling dex index: 1
+Actor pre-loan balances: [0.05496655134569115, 122.35664810342169]
+Caller pre-loan balances: [0.002375, 0.0]
+
+
+2022-01-27 22:39:25.414615
+Success!Actor post-loan balances: [0.0, 0.0]
+Caller post-loan balances: [0.057626218049464675, 121.67751675915542]
+Amount of loans received during the flash loan: [0.001, 3.0]
+Final net profits: [2.846667037735215e-22, -6.79131344266267e-19]
+
+
+2022-01-27 22:39:25.414805
+Success!Actor post-loan balances: [0.0, 0.0]
+Caller post-loan balances: [0.057626218049464675, 121.67751675915542]
+Amount of loans received during the flash loan: [0.001, 3.0]
+Final net profits: [2.846667037735215e-22, -6.79131344266267e-19]
+
+Operation failed
+The exception is 
+

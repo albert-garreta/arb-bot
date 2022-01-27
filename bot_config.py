@@ -35,8 +35,8 @@ debug_mode = False  # prevents executing the function act()
 rebooter_bot = False  # bot reboots automatically in case of an error
 force_actions = False
 if network.show_active() in FTM_NETWORKS:
-    forced_tkn0_to_buy = 0.1e18
-    forced_tkn1_to_sell = 2e18
+    forced_tkn0_to_buy = 10e18
+    forced_tkn1_to_sell = 20e18
 elif network.show_active() in ETH_NETWORKS:
     forced_tkn0_to_buy = 0.001e18
     forced_tkn1_to_sell = 3e18
@@ -62,7 +62,8 @@ lending_pool_fee = 0.09  # Cream: 0.03. GEIST's and AAVE's: 0.09.
 
 # NOTE: I am currently estimating slippages as the price % change
 # if swapping $10k of value
-approx_slippages = [0.04, 0.2]
+#approx_slippages = [0.04, 0.2]
+approx_slippages = [0.02, 0.1]
 
 # min_spread = 0.1 + sum(dex_fees) + lending_pool_fee
 # The following is a correct estimate of the min spread needed
@@ -78,7 +79,7 @@ approx_slippages = [0.04, 0.2]
 min_final_profit_ratio = 0.01
 
 if network.show_active() in FTM_NETWORKS:
-    min_final_amount_out = 2.5  # 2WFTM
+    min_final_amount_out = 2.5  # WFTM
 elif network.show_active() in ETH_NETWORKS:
     min_final_amount_out = 0.001
 else:

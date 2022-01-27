@@ -103,7 +103,7 @@ def run_epoch(_all_dex_to_pair_data, _all_reserves, _actor):
             _actor = prepare_actor(_all_dex_to_pair_data, _all_reserves, _actor)
         else:
             print("Flash loan failed!")
-            process_failure(_all_reserves)
+            process_failure(_all_dex_to_pair_data,_all_reserves,_actor)
 
 
 def look_for_arbitrage(_reserves_all_dexes, _force_success=False):
@@ -267,7 +267,7 @@ def act(_all_dex_to_pair_data, arb_info, _actor, _verbose=True):
         msg += "Operation failed\n"
         msg += f"The exception is {e}\n\n"
         print_and_log(msg, bot_config.log_actions_path)
-        assert False
+        
         return False
 
 
