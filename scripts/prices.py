@@ -1,6 +1,5 @@
 from tkinter import E
 from scripts.utils import get_account, print_args_wrapped
-from scripts.data import get_all_dex_to_pair_data
 import bot_config
 import numpy as np
 from scipy.optimize import minimize_scalar
@@ -191,7 +190,7 @@ def get_net_profit(
     return final_amount_out
 
 
-def get_dex_ammount_out(_reserve0, _reserve1, _amount_in, _dex_fee, _slippage):
+def get_dex_ammount_out(_reserve0, _reserve1, _amount_in, _dex_fee, _slippage=0):
     # This is derived from the x*y=k formula: the balances x',y' after the swap
     # have to satisgy x' * y' = k
     # print(_reserve0)

@@ -10,6 +10,10 @@ ETH_NETWORKS = ["mainnet", "mainnet-fork", "kovan"]
 FTM_NETWORKS = ["ftm-main", "ftm-main-fork", "ftm-test"]
 
 
+def num_digits(number: int) -> int:
+    return len(str(number))
+
+
 def get_address(_name):
     # This line of code is used so often that maybe it is better to have
     # a short-hand version of it
@@ -71,9 +75,9 @@ def get_account(index=None, id=None):
         return accounts.add(config["wallets"]["from_key"])
 
 
-def deposit_main_token_into_wrapped_version(_amount):
+def deposit_main_token_into_wrapped_version(_amount :int):
     # the amount is in Wei
-    print("Depositing mainnet token into its wrapped ERC20 version...")
+    print(f"Depositing {_amount} mainnet token into its wrapped ERC20 version...")
     tx = interface.IWeth(
         config["networks"][network.show_active()]["wrapped_main_token_address"]
     ).deposit({"from": get_account(), "value": _amount})
@@ -143,30 +147,3 @@ def print_args_wrapped(fun):
         return fun(*args, **kwargs)
 
     return w_fun
-
-
-# def linear_programming(
-#     initial_equitiy,
-#     price_tkn1_in_tkn0_dex0,
-#     price_tkn0_in_tkn1_dex1,
-#     fee_dex0,
-#     fee_dex1,
-#     flashloan_fee,
-# ):
-#     a = fee_dex0 / price_tkn1_in_tkn0_dex0
-#     b = fee_dex1 / price_tkn0_in_tkn1_dex1
-#     c = flashloan_fee
-#     bounds = [[0, None], [0, None], [0, initial_equitiy]]
-#     C = [-a + c, -b + c, 0]
-#     A_ub = [[-a, c, -1], [c, -b, 1 / price_tkn0_in_tkn1_dex1]]
-#     # A_ub = [[-a, c], [c, -b], [-1, 1 / price_tkn0_in_tkn1_dex1]]
-#     b_ub = [0, initial_equitiy]
-#     res = linprog(
-#         C,
-#         A_ub=A_ub,
-#         b_ub=b_ub,
-#         A_eq=None,
-#         b_eq=None,
-#         bounds=bounds,
-#     )
-#     print(res)

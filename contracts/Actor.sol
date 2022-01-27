@@ -230,4 +230,41 @@ contract Actor is FlashLoanReceiverBase, Ownable {
 
         return amounts;
     }
+
+    function swapTokensForExactTokens(
+        address _tokenInAddress,
+        address _tokenOutAddress,
+        uint256 _amountOut,
+        uint256 _maxAmountIn,
+        uint256 _dexIndex
+    ) public returns (uint256[] memory) {
+        // No need to do this step in the second swap of the
+        // twoHorpArbitrage function
+
+        IERC20 tokenIn = IERC20(_tokenInAddress);
+        tokenIn.approve(address(swapRouters[_dexIndex]), _maxAmountIn);
+
+        // require(
+        //     tokenIn.allowance(
+        //         address(this),
+        //         address(swapRouters[_routerIndex])
+        //     ) == _amountIn
+        // );
+        // require(tokenIn.balanceOf(_whoToTransferFrom) == _amountIn);
+
+        address[] memory path = new address[](2);
+        path[0] = _tokenInAddress;
+        path[1] = _tokenOutAddress;
+
+        uint256[] memory amounts = swapRouters[_dexIndex]
+            .swapTokensForExactTokens(
+                _amountOut,
+                _maxAmountIn, 
+                path,
+                address(this),
+                block.timestamp
+            );
+
+        return amounts;
+    }
 }

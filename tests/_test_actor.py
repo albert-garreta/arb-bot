@@ -2,7 +2,6 @@ from webbrowser import get
 from brownie import interface
 from web3 import Web3
 from scripts.deploy import deploy_actor
-from scripts.prices import get_pair_price_full
 import bot_config
 import pytest
 from scripts.utils import (

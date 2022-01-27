@@ -27,7 +27,7 @@ import warnings
 MAIN_NETWORKS = ["ftm-main", "mainnet"]
 
 
-def preprocess():
+def preprocess(_verbose=True):
     if (
         network.show_active()
         in LOCAL_BLOCKCHAIN_ENVIRONMENTS + NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS
@@ -37,10 +37,16 @@ def preprocess():
         )
 
     all_dex_to_pair_data = get_all_dex_to_pair_data()
-    all_dex_to_pair_data = get_all_dex_to_pair_data()
+
+    # TODO: same code used in another function in this script.
+    # Refactor code into a function?
+    reserves_all_dexes = [
+        get_reserves(all_dex_to_pair_data, dex_index)
+        for dex_index in range(len(bot_config.dex_names))
+    ]
     if not bot_config.debug_mode:
         actor = deploy_actor()
-        actor = prepare_actor(all_dex_to_pair_data, actor)
+        actor = prepare_actor(all_dex_to_pair_data, reserves_all_dexes, actor)
     else:
         actor = None
     return all_dex_to_pair_data, actor
@@ -81,7 +87,7 @@ def run_bot(all_dex_to_pair_data, actor):
                 get_reserves(all_dex_to_pair_data, dex_index)
                 for dex_index in range(len(bot_config.dex_names))
             ]
-            run_epoch(reserves_all_dexes, reserves_all_dexes, actor)
+            run_epoch(all_dex_to_pair_data, reserves_all_dexes, actor)
         time.sleep(bot_config.time_between_epoch_due_checks)
 
 
@@ -89,12 +95,12 @@ def run_epoch(_all_dex_to_pair_data, _all_reserves, _actor):
 
     arb_info = look_for_arbitrage(_all_reserves)
     if arb_info and not bot_config.debug_mode:
-        action_successful = act(_all_dex_to_pair_data, arb_info, _actor)
+        action_successful = act(arb_info, _actor)
         if action_successful:
-            _actor = prepare_actor(_all_dex_to_pair_data, _actor)
+            _actor = prepare_actor(_all_dex_to_pair_data, _all_reserves, _actor)
         else:
             print("Flash loan failed!")
-            process_failure()
+            process_failure(_all_reserves)
 
 
 def look_for_arbitrage(reserves_all_dexes):
@@ -145,7 +151,7 @@ def look_for_arbitrage(reserves_all_dexes):
         return None
 
 
-def act(_all_dex_to_pair_data, arb_info, _actor, _verbose=True):
+def act(arb_info, _actor, _verbose=True):
     (
         final_profit_ratio,
         amount_tkn0_to_buy,
@@ -173,9 +179,9 @@ def act(_all_dex_to_pair_data, arb_info, _actor, _verbose=True):
         return False
 
 
-def process_failure(_all_dex_to_pair_data, _actor):
+def process_failure(_all_dex_to_pair_data, _all_reserves, _actor):
     # TODO: What else do we need to do here?
-    prepare_actor(_all_dex_to_pair_data, _actor)
+    prepare_actor(_all_dex_to_pair_data, _all_reserves, _actor)
 
 
 def epoch_due(block_number):

@@ -25,7 +25,7 @@ def process_line_commands():
         sys.exit(2)
 
 
-debug_mode = False  # prevents executing the function act()
+debug_mode = False   # prevents executing the function act()
 rebooter_bot = False  # bot reboots automatically in case of an error
 
 # Number of blocks to wait between epochs. In fantom a block takes around 0.85s to
@@ -59,12 +59,9 @@ min_final_amount_out = 2  # 2WFTM
 # The max amount of token0 dedicated to paying fees.
 # Determines max amount borrowable
 # This max amount is splitted latter between token0 and token1 equally in value
-amount_for_fees = 40_000 * 1e18
-
+amount_for_fees = 40 * 1e18
 # An extra amount of token0 that we will transfer just to have some extra margin
-extra_cover = 0.03 * 1e18
-
-
+extra_cover = 30 * 1e18
 max_amount_in = amount_for_fees * 100 / lending_pool_fee
 
 # Currently just a placeholder for quick debugging

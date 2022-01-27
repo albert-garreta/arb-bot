@@ -66,6 +66,7 @@ networks:
     token1: "0xf1277d1Ed8AD466beddF92ef448A132661956621"
     # unclear what address to be used here
     token0: "0x076877073D287Ee8c10878B190d7166367899fdA"
+    wrapped_main_token_address: "0xf1277d1Ed8AD466beddF92ef448A132661956621"
     lending_pool_addresses_provider_address: "0x6c793c628Fe2b480c5e6FB7957dDa4b9291F9c9b"
     dex_addresses:
       default_dex: "spiritswap"

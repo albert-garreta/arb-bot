@@ -1,9 +1,7 @@
 from re import A
 from scripts.prices import (
-    get_pair_price_full,
     get_dex_ammount_out,
     get_approx_price,
-    get_pair_price_via_pool_reserves,
 )
 from scripts.utils import get_token_addresses, FTM_NETWORKS, ETH_NETWORKS
 from scripts.data import get_all_dex_to_pair_data

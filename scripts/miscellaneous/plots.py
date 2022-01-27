@@ -11,6 +11,7 @@ from scripts.data import get_all_dex_to_pair_data
 import bot_config
 import random
 
+# TODO: Improve readability of this script
 
 RESERVE00 = 31541731643070439008914621  # taken from spookyswap WFTM/USDC
 RESERVE10 = 76802364798781000000000000  # taken from spookyswap WFTM/USDC
@@ -20,6 +21,10 @@ RESERVE11 = int(1 * 19920334106416000000000000)
 
 RESERVE00, RESERVE10 = (8630299609753566273489277, 20171672196590000000000000)
 RESERVE01, RESERVE11 = (36711476243152243255560989, 85201866459307000000000000)
+
+
+RESERVE00, RESERVE10 = (8812813628410115267563602, 19738137454139000000000000)
+RESERVE01, RESERVE11 = (38403585201566284827432565, 85967388690746000000000000)
 
 
 def plot_get_dex_amount_fun():
@@ -57,7 +62,7 @@ def plot_final_profits():
         0.04,
         0.09,
     )
-    max_amount_in = 50 * 1e21
+    max_amount_in = 20 * 1e21
     f = get_net_profit_functional(*args)
 
     for amount_in in amount_in_rndn:
