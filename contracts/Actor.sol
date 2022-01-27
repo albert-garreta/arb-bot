@@ -242,15 +242,15 @@ contract Actor is FlashLoanReceiverBase, Ownable {
         // twoHorpArbitrage function
 
         IERC20 tokenIn = IERC20(_tokenInAddress);
-        tokenIn.approve(address(swapRouters[_dexIndex]), _maxAmountIn);
+        tokenIn.approve(address(swapRouters[_dexIndex]), _maxAmountIn+100000);
 
-        // require(
-        //     tokenIn.allowance(
-        //         address(this),
-        //         address(swapRouters[_routerIndex])
-        //     ) == _amountIn
-        // );
-        // require(tokenIn.balanceOf(_whoToTransferFrom) == _amountIn);
+        require(
+            tokenIn.allowance(
+                address(this),
+                address(swapRouters[_dexIndex])
+            ) >= _maxAmountIn
+        );
+        require(tokenIn.balanceOf(address(this)) >= _maxAmountIn);
 
         address[] memory path = new address[](2);
         path[0] = _tokenInAddress;

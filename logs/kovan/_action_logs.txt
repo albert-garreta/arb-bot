@@ -1,0 +1,54 @@
+
+2022-01-27 22:29:31.651184
+Requesting flash loan and swapping...
+Expected net value gain (in token0): 2.0699999999999999e-19
+Requesting to borrow the following ammounts: 
+[1.3093345836005723, 5027.586149391884]
+Fees to be paid: 
+[0.0011784011252405152, 4.524827534452695]
+Buying dex index: 1
+Selling dex index: 0
+Actor pre-loan balances: [0.0525, 171.22900631310577]
+Caller pre-loan balances: [3.0840999999995, 1332.014683590945]
+
+
+2022-01-27 22:29:32.271633
+Operation failed
+The exception is Execution reverted during call: 'VM execution error.'. This transaction will likely revert. If you wish to broadcast, include `allow_revert:True` as a transaction parameter.
+
+
+2022-01-27 22:33:00.054520
+Requesting flash loan and swapping...
+Expected net value gain (in token0): 2.0699999999999999e-19
+Requesting to borrow the following ammounts: 
+[1.3093345836005723, 5027.586149391884]
+Fees to be paid: 
+[0.0011784011252405152, 4.524827534452695]
+Buying dex index: 1
+Selling dex index: 0
+Actor pre-loan balances: [0.0525, 171.22900631310577]
+Caller pre-loan balances: [3.0840999999995, 1332.014683590945]
+
+
+2022-01-27 22:33:00.652599
+Operation failed
+The exception is Execution reverted during call: 'VM execution error.'. This transaction will likely revert. If you wish to broadcast, include `allow_revert:True` as a transaction parameter.
+
+
+2022-01-27 22:33:37.685334
+Requesting flash loan and swapping...
+Expected net value gain (in token0): 2.0699999999999999e-19
+Requesting to borrow the following ammounts: 
+[1.3093345836005723, 5027.586149391884]
+Fees to be paid: 
+[0.0011784011252405152, 4.524827534452695]
+Buying dex index: 1
+Selling dex index: 0
+Actor pre-loan balances: [0.0525, 171.22900631310577]
+Caller pre-loan balances: [3.0840999999995, 1332.014683590945]
+
+
+2022-01-27 22:33:38.114545
+Operation failed
+The exception is Execution reverted during call: 'VM execution error.'. This transaction will likely revert. If you wish to broadcast, include `allow_revert:True` as a transaction parameter.
+

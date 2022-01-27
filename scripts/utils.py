@@ -1,5 +1,6 @@
 from brownie import accounts, network, config, interface
 from scipy.optimize import linprog
+from datetime import datetime
 
 NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS = ["development", "ganache"]
 LOCAL_BLOCKCHAIN_ENVIRONMENTS = NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS + [
@@ -8,6 +9,13 @@ LOCAL_BLOCKCHAIN_ENVIRONMENTS = NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS + [
 ]
 ETH_NETWORKS = ["mainnet", "mainnet-fork", "kovan"]
 FTM_NETWORKS = ["ftm-main", "ftm-main-fork", "ftm-test"]
+
+
+def print_and_log(msg, path):
+    msg = f"\n{datetime.now()}\n" + msg
+    print(msg)
+    with open(path, "a") as f:
+        f.write(msg)
 
 
 def num_digits(number: int) -> int:
@@ -75,7 +83,7 @@ def get_account(index=None, id=None):
         return accounts.add(config["wallets"]["from_key"])
 
 
-def deposit_main_token_into_wrapped_version(_amount :int):
+def deposit_main_token_into_wrapped_version(_amount: int):
     # the amount is in Wei
     print(f"Depositing {_amount} mainnet token into its wrapped ERC20 version...")
     tx = interface.IWeth(

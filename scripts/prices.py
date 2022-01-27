@@ -27,8 +27,6 @@ def get_arbitrage_profit_info(
     # We take the maximum amount out possible. The buying dex is the one
     # with max_index, and the selling is the one with min_index
 
-    # FIXME: what is a good amount in to pass here? (Amount in may affect the choice of
-    # buying dex)
     buying_dex_index, opt_amount_in, opt_amount_out = get_buying_dex_and_amounts_in_out(
         _reserves, _dex_fees, _slippages, _lending_pool_fee, _verbose
     )
@@ -80,9 +78,6 @@ def get_buying_dex_and_amounts_in_out(
         # Check the two combinatios of buying/selling dexes and see with wich one
         # we get better net profits
 
-        reserve0, reserve1 = _reserves[
-            dex_index
-        ]  # get_reserves(_pair_dex_data, dex_index, _verbose=True)
         reserves_buying_dex = _reserves[dex_index]
         reserves_selling_dex = _reserves[(dex_index + 1) % 2]
         fees_buying_dex = _dex_fees[dex_index]
@@ -208,27 +203,6 @@ def get_approx_price(_dex_reserves, buying=True):
     else:
         return reserve1 / reserve0
 
-
-def get_reserves(_pair_dex_data, _dex_index, _verbose=False):
-    # The way this function is designed is so that it is as fast as possible
-    # when retrieving prices. The arguments of the function consist of precomputed
-    # static data about the dex pairs and individual tokens
-    account = get_account()
-    pair_data = _pair_dex_data["pair_data"]
-    token_data = _pair_dex_data["token_data"]
-    pair, reversed_order = pair_data[bot_config.dex_names[_dex_index]]
-    token0, name0, decimals0 = token_data[bot_config.token_names[0]]
-    token1, name1, decimals1 = token_data[bot_config.token_names[1]]
-
-    reserve0, reserve1, block_timestamp_last = pair.getReserves({"from": account})
-    if reversed_order:
-        _ = reserve0
-        reserve0 = reserve1
-        reserve1 = _
-    reserve0 *= 10 ** (max(decimals0, decimals1) - decimals0)
-    reserve1 *= 10 ** (max(decimals0, decimals1) - decimals1)
-
-    return reserve0, reserve1
 
 
 def get_optimal_amount_in(

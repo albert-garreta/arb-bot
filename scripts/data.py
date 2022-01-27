@@ -13,6 +13,36 @@ class dotdict(dict):
     __delattr__ = dict.__delitem__
 
 
+
+
+
+def get_dex_reserves(_pair_dex_data, _dex_index, _verbose=False):
+    # The way this function is designed is so that it is as fast as possible
+    # when retrieving prices. The arguments of the function consist of precomputed
+    # static data about the dex pairs and individual tokens
+    account = get_account()
+    pair_data = _pair_dex_data["pair_data"]
+    token_data = _pair_dex_data["token_data"]
+    pair, reversed_order = pair_data[bot_config.dex_names[_dex_index]]
+    token0, name0, decimals0 = token_data[bot_config.token_names[0]]
+    token1, name1, decimals1 = token_data[bot_config.token_names[1]]
+
+    reserve0, reserve1, block_timestamp_last = pair.getReserves({"from": account})
+    if reversed_order:
+        _ = reserve0
+        reserve0 = reserve1
+        reserve1 = _
+    reserve0 *= 10 ** (max(decimals0, decimals1) - decimals0)
+    reserve1 *= 10 ** (max(decimals0, decimals1) - decimals1)
+
+    return reserve0, reserve1
+
+def get_all_dex_reserves(_pair_dex_data) -> tuple[tuple[int, int]]:
+    return [
+        get_dex_reserves(_pair_dex_data, dex_index)
+        for dex_index in range(len(bot_config.dex_names))
+    ]
+
 def get_all_dex_to_pair_data():
     # TODO: should this and the following be placed here?
 

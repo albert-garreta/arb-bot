@@ -3,13 +3,18 @@ import bot_config
 from scripts.prices import get_approx_price
 from scripts.utils import get_account, num_digits, get_wallet_balances
 from brownie import interface, config, network
+import warnings
 
 
 def prepare_actor(_all_dex_to_pair_data, _all_reserves, _actor):
+    # FIXME: this currently is innefficient (because in some cases it is possible that we
+    # make two transfers of WFTM to actor, when we could do it with just one transfer)
+    # and messy (in how the amounts to transfer are computed, in having the hardcoded 0
+    # as index of dex being used twice).
+
     """Preliminary steps to the flashloan request and actions which can be done beforehand"""
     print("Preparing actor for a future flashloan...")
 
-    print(_all_dex_to_pair_data["token_data"].keys())
     token0, name0, decimals0 = _all_dex_to_pair_data["token_data"][
         bot_config.token_names[0]
     ]
@@ -20,7 +25,8 @@ def prepare_actor(_all_dex_to_pair_data, _all_reserves, _actor):
     # TODO: Here we are choosing a dex arbitrarily. Probably it does not matter much?
     reserves0 = _all_reserves[0]
 
-    required_balance_token0 = (bot_config.amount_for_fees + bot_config.extra_cover) / 2
+    # The -1e18 is to leave some WFTM on the account to accomodate some friction while preparing the actor
+    required_balance_token0 = 1.05 * (bot_config.amount_for_fees) / 2
     adjust_actor_balance(
         _actor, token0, name0, decimals0, required_balance_token0, reserves0
     )
@@ -41,7 +47,7 @@ def adjust_actor_balance(
     _token,
     _name: str,
     _decimals: int,
-    _required_balance: int,
+    _required_balance: int,  # in wei
     _dex_reserves: tuple[int, int],
 ) -> None:
     account = get_account()
@@ -50,72 +56,86 @@ def adjust_actor_balance(
     print(f"Required balance of {_name} for actor: {_required_balance}")
     tokens_aldready_in_actor = _token.balanceOf(_actor.address, {"from": account})
     print(f"Tokens {_name} already in actor: {tokens_aldready_in_actor}")
-    amount_token_to_actor = max(_required_balance - tokens_aldready_in_actor, 0)
-    print(f"Tokens to transfer to actor: {amount_token_to_actor}")
-    token_balance_caller = _token.balanceOf(account.address)
-    print(f"Caller {_name} balance {token_balance_caller}")
-    if token_balance_caller < amount_token_to_actor:
-        print(f"Caller {_name} balance is insufficient.")
+    amount_missing = max(_required_balance - tokens_aldready_in_actor, 0)
+    print(f"Amount missing: {amount_missing}")
 
-        # FIXME: caution: here I am assuming that WFTM=token0. To do it in general
-        # I need to make a get_approx_price function that is able to compute
-        # more prices than just token0/token1 ot token1/token0
-        wrapped_token_address = config["networks"][network.show_active()][
-            "wrapped_main_token_address"
-        ]
-        price_wrap_to_token1 = get_approx_price(_dex_reserves, buying=False)
-        # The token being sent away has 18 decimals if it is WFTM
-        # TODO: make it genera (any decimals, seee FIXME above)
-        _max_amount_in = int(
-            (amount_token_to_actor / price_wrap_to_token1) * 10 ** (18 - _decimals)
-        )
-        # we add 10% more to accomodate price variability
-        _max_amount_in *= 1.1
+    if amount_missing > 0:
+        token_balance_caller = _token.balanceOf(account.address)
+        print(f"Caller {_name} balance {token_balance_caller}")
+        if token_balance_caller >= amount_missing:
+            print(f"Caller has enough {_name}. Sending it to actor...")
+            tx = _token.approve(
+                _actor.address, amount_missing + 1000, {"from": account}
+            )
+            tx.wait(1)
+            # ATTENTION to the "from":_actor.address
+            tx = _token.transfer(
+                _actor.address,
+                amount_missing,
+                {"from": account},
+            )
+            tx.wait(1)
+            print("Transfered")
+        else:
+            print(f"Caller has not enough {_name}")
+            print(
+                f"Sending wrapped mainnet token to actor so that actor can swap it for {_name}"
+            )
+            # FIXME: caution: here I am assuming that WFTM=token0. To do it in general
+            # I need to make a get_approx_price function that is able to compute
+            # more prices than just token0/token1 ot token1/token0
+            wrapped_token_address = config["networks"][network.show_active()][
+                "wrapped_main_token_address"
+            ]
+            price_wrapped_maintoken_to_token1 = get_approx_price(
+                _dex_reserves, buying=False
+            )
+            # The token being sent away has 18 decimals if it is WFTM
+            # TODO: make it genera (any decimals, seee FIXME above)
+            _max_amount_in = int(
+                (amount_missing / price_wrapped_maintoken_to_token1)
+                * 10 ** (18 - _decimals)
+            )
+            # we add some % more to accomodate price variability
+            _max_amount_in *= 1.05
 
-        print("Approving spending...")
-        tx = interface.IERC20(wrapped_token_address).approve(
-            _actor.address, _max_amount_in, {"from": account}
-        )
-        tx.wait(1)
-        print("Approved")
+            wrapped_token = interface.IERC20(wrapped_token_address)
+            print("Approving spending for actor...")
+            tx = wrapped_token.approve(
+                _actor.address, _max_amount_in, {"from": account}
+            )
+            tx.wait(1)
+            print("Approved")
 
-        swap_tokens_for_exact_tokens(
-            wrapped_token_address,
-            _token.address,
-            amount_token_to_actor,
-            _max_amount_in,
-            _name,
-            account,
-            _actor,
-        )
+            print(f"Sending {_max_amount_in} wrapped main token to actor...")
+            wrapped_token.transfer(
+                _actor.address, _max_amount_in, {"from": account}
+            )
+            print("sent")
 
-    if amount_token_to_actor > 0:
-        # !! transferFrom and approve since we are transfering from an external account (ours)
-        print(
-            f"Approving {amount_token_to_actor} of "
-            f"{_name} for transfering to actor..."
-        )
-        tx = _token.approve(
-            _actor.address, amount_token_to_actor + 10000, {"from": account}
-        )
-        tx.wait(1)
-        print("Approved")
+            # TODO: It may make more sense to just swap directly with the router instead
+            # of transferring first to the actor and then making the actor swap. I think it is
+            # basically the same, but maybe it makes more sense from a logical perspective
 
-        # TODO: Is it dangerous to make the transfer now? (grieffing attack?)
-        print(f"Transferring {_name} to Actor...")
-        # TODO: Check if this can be done just with a transfer
-        # POSSIBLE ANSWER: I think so, but must add PAYABLE to Actor. <- Check
-        tx = _token.transferFrom(
-            account.address,
-            _actor.address,
-            amount_token_to_actor,
-            {"from": _actor.address},
-        )
-        tx.wait(1)
-        print("Transfer done")
+            # router_address = config["networks"][network.show_active()][
+            #     bot_config.dex_names[0]
+            # ]
+            # router = interface.UniswapV2Router(router_address)
+            # router.swapTokensForExactTokens(amount_token_to_actor, _max_amount_in, [wrapped_token_address, _token.address], )
+
+            swap_tokens_for_exact_tokens(
+                wrapped_token_address,
+                _token.address,
+                amount_missing,
+                _max_amount_in,
+                _name,
+                account,
+                _actor,
+            )
+
     else:
         # TODO: Why did this happen?
-        print("ATTENTION: actor holds too much tokens0s. How did this happen?")
+        warnings.warn("ATTENTION: actor holds too much tokens0s. How did this happen?")
 
 
 def swap_tokens_for_exact_tokens(
@@ -149,7 +169,7 @@ def swap_tokens_for_exact_tokens(
     tx.wait(1)
     print("Swap done")
     print(
-        f"Current caller {_name} balance: {interface.IERC20.balaceOf(_account.address)}"
+        f"Actor {_name} balance: {interface.IERC20(_token_out_address).balanceOf(_actor.address)}"
     )
 
 
@@ -181,5 +201,5 @@ def swap_exact_tokens_for_tokens(
     tx.wait(1)
     print("Swap done")
     print(
-        f"Current caller {_name} balance: {interface.IERC20.balaceOf(_account.address)}"
+        f"Actor {_name} balance: {interface.IERC20(_token_out_address).balanceOf(_actor.address)}"
     )

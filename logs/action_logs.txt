@@ -1,0 +1,220 @@
+Requesting flash loan and swapping...
+Expected net value gain (in token0): -0.0
+Requesting to borrow the following ammounts: 
+[0.1, 0.2]
+Fees to be paid: 
+[0.009, 0.018]
+Buying dex index: 1
+Selling dex index: 0
+Actor pre-loan balances: [5.501975840472117, 11.104819]
+Caller pre-loan balances: [0.237500170901936, 0.0]
+Success!Actor post-loan balances: [0.0, 0.0]
+Caller post-loan balances: [5.733750556757672, 11.115763]
+Amount of loans received during the flash loan: [0.1, 0.2]
+Final net profits: [-5.725454616380965e-21, 1.094399999999851e-08]
+
+Requesting flash loan and swapping...
+Expected net value gain (in token0): -0.0
+Requesting to borrow the following ammounts: 
+[0.1, 0.2]
+Fees to be paid: 
+[0.009, 0.018]
+Buying dex index: 1
+Selling dex index: 0
+Actor pre-loan balances: [5.25, 11.252028]
+Caller pre-loan balances: [6.129494723755415, 14.084655]
+Success!Actor post-loan balances: [0.0, 0.0]
+Caller post-loan balances: [11.37456933761929, 25.345885]
+Amount of loans received during the flash loan: [0.1, 0.2]
+Final net profits: [-4.9253861361249206e-21, 9.202000000000154e-09]
+
+Requesting flash loan and swapping...
+Expected net value gain (in token0): -0.0
+Requesting to borrow the following ammounts: 
+[0.1, 0.2]
+Fees to be paid: 
+[0.009, 0.018]
+Buying dex index: 1
+Selling dex index: 0
+Actor pre-loan balances: [0.525, 1.100421]
+Caller pre-loan balances: [10.849569337619291, 24.245464]
+Operation failed
+The exception is Gas estimation failed: 'execution reverted'. This transaction will likely revert. If you wish to broadcast, you must set the gas limit manually.
+Requesting flash loan and swapping...
+Expected net value gain (in token0): 9.388e-18
+Requesting to borrow the following ammounts: 
+[5555.555471550432, 11613.239808083126]
+Fees to be paid: 
+[499.99999243953886, 1045.1915827274813]
+Buying dex index: 1
+Selling dex index: 0
+Actor pre-loan balances: [5.25, 11.105176]
+Caller pre-loan balances: [6.124569337619291, 7.91203]
+
+Operation failed
+The exception is Gas estimation failed: 'execution reverted'. This transaction will likely revert. If you wish to broadcast, you must set the gas limit manually.
+
+
+2022-01-27 20:56:46.510535
+Requesting flash loan and swapping...
+Expected net value gain (in token0): 3.8746e-17
+Requesting to borrow the following ammounts: 
+[5555.555471550432, 11488.591362198411]
+Fees to be paid: 
+[499.99999243953886, 1033.9732225978569]
+Buying dex index: 1
+Selling dex index: 0
+Actor pre-loan balances: [5.25, 11.105176]
+Caller pre-loan balances: [6.124569337619291, 7.91203]
+
+
+2022-01-27 20:56:46.668024
+Operation failed
+The exception is Gas estimation failed: 'execution reverted'. This transaction will likely revert. If you wish to broadcast, you must set the gas limit manually.
+
+
+2022-01-27 21:31:46.206068
+Requesting flash loan and swapping...
+Expected net value gain (in token0): -0.0
+Requesting to borrow the following ammounts: 
+[0.1, 0.2]
+Fees to be paid: 
+[9e-05, 0.00018]
+Buying dex index: 1
+Selling dex index: 0
+Actor pre-loan balances: [5.501975925345543, 10.766865]
+Caller pre-loan balances: [0.237500028160113, 0.0]
+
+
+2022-01-27 21:31:47.608226
+Operation failed
+The exception is Expecting value: line 1 column 1 (char 0)
+
+
+2022-01-27 21:33:39.089383
+Requesting flash loan and swapping...
+Expected net value gain (in token0): -0.0
+Requesting to borrow the following ammounts: 
+[0.1, 0.2]
+Fees to be paid: 
+[9e-05, 0.00018]
+Buying dex index: 1
+Selling dex index: 0
+Actor pre-loan balances: [5.501975923327657, 10.743435]
+Caller pre-loan balances: [0.237500145596896, 0.0]
+
+
+2022-01-27 21:33:40.134720
+Operation failed
+The exception is Expecting value: line 1 column 1 (char 0)
+
+
+2022-01-27 21:35:05.156004
+Requesting flash loan and swapping...
+Expected net value gain (in token0): -0.0
+Requesting to borrow the following ammounts: 
+[0.1, 0.2]
+Fees to be paid: 
+[9e-05, 0.00018]
+Buying dex index: 1
+Selling dex index: 0
+Actor pre-loan balances: [5.501975919679093, 10.698778]
+Caller pre-loan balances: [0.237500363374675, 0.0]
+
+
+2022-01-27 21:36:36.432173
+Requesting flash loan and swapping...
+Expected net value gain (in token0): -0.0
+Requesting to borrow the following ammounts: 
+[0.1, 0.2]
+Fees to be paid: 
+[9e-05, 0.00018]
+Buying dex index: 1
+Selling dex index: 0
+Actor pre-loan balances: [5.50197593229133, 10.698858]
+Caller pre-loan balances: [0.237500087259406, 0.0]
+
+
+2022-01-27 21:37:01.044964
+Success!Actor post-loan balances: [0.0, 0.0]
+Caller post-loan balances: [5.737331162594427, 10.702027]
+Amount of loans received during the flash loan: [0.1, 0.2]
+Final net profits: [-2.1448569563089493e-21, 3.1689999999997553e-09]
+
+
+2022-01-27 21:39:08.188050
+Requesting flash loan and swapping...
+Expected net value gain (in token0): -0.0
+Requesting to borrow the following ammounts: 
+[0.1, 0.2]
+Fees to be paid: 
+[9e-05, 0.00018]
+Buying dex index: 1
+Selling dex index: 0
+Actor pre-loan balances: [5.501975922809428, 10.635791]
+Caller pre-loan balances: [0.237500490123534, 0.0]
+
+
+2022-01-27 21:39:43.738118
+Requesting flash loan and swapping...
+Expected net value gain (in token0): -0.0
+Requesting to borrow the following ammounts: 
+[0.1, 0.2]
+Fees to be paid: 
+[9e-05, 0.00018]
+Buying dex index: 1
+Selling dex index: 0
+Actor pre-loan balances: [5.501975921476644, 10.636268]
+Caller pre-loan balances: [0.237500517805254, 0.0]
+
+
+2022-01-27 21:42:33.235415
+Requesting flash loan and swapping...
+Expected net value gain (in token0): -0.0
+Requesting to borrow the following ammounts: 
+[0.1, 0.2]
+Fees to be paid: 
+[9e-05, 0.00018]
+Buying dex index: 0
+Selling dex index: 1
+Actor pre-loan balances: [5.501975928033434, 10.665369]
+Caller pre-loan balances: [0.237500284868979, 0.0]
+
+
+2022-01-27 21:44:19.912238
+Requesting flash loan and swapping...
+Expected net value gain (in token0): -0.0
+Requesting to borrow the following ammounts: 
+[0.1, 0.2]
+Fees to be paid: 
+[9e-05, 0.00018]
+Buying dex index: 0
+Selling dex index: 1
+Actor pre-loan balances: [5.501975925687776, 10.693301]
+Caller pre-loan balances: [0.237500249916481, 0.0]
+
+
+2022-01-27 21:44:44.969713
+Success!Actor post-loan balances: [0.0, 0.0]
+Caller post-loan balances: [5.737392726567708, 10.696395]
+Amount of loans received during the flash loan: [0.1, 0.2]
+Final net profits: [-2.083449036549112e-21, 3.0940000000008184e-09]
+
+
+2022-01-27 22:23:16.916884
+Requesting flash loan and swapping...
+Expected net value gain (in token0): 8.824999999999999e-18
+Requesting to borrow the following ammounts: 
+[5555.555471550432, 11121.63631572974]
+Fees to be paid: 
+[4.9999999243953885, 10.009472684156766]
+Buying dex index: 0
+Selling dex index: 1
+Actor pre-loan balances: [5.25, 11.105176]
+Caller pre-loan balances: [6.124569337619291, 7.91203]
+
+
+2022-01-27 22:23:16.919044
+Operation failed
+The exception is module 'bot_config' has no attribute 'gas_price'
+
