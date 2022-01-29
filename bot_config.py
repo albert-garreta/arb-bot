@@ -8,10 +8,9 @@ import os
 
 # TODO: integrate with the config file?
 
-debug_mode = True  # prevents executing the function act()
+debug_mode = False  # prevents executing the function act()
 rebooter_bot = False  # bot reboots automatically in case of an error
 force_actions = False
-get_frictionless_price_from_oracle = True
 
 # names and decimals are filled furing preprocessing
 token_names = []
@@ -28,12 +27,12 @@ approx_slippages = [
 # The max amount of token0 dedicated to paying fees.
 # This max amount is splitted latter between token0 and token1 equally in value
 amount_for_fees_tkn0 = 5
-amount_for_fees_tkn1_in_tkn0 = amount_for_fees_tkn0/2
+amount_for_fees_tkn1_in_tkn0 = amount_for_fees_tkn0 / 2
 # Due to the way we operate, the token being sold does not incur any profits
 # during the arbitrage. Hence we need to supply  extra amount of tkn1 in order to
-# pay for the fees of borrowing tkn1. This is around 0.3% of the amount we borrow 
+# pay for the fees of borrowing tkn1. This is around 0.3% of the amount we borrow
 # of token1. Heuristically I am approximating this as 50
-amount_for_fees_tkn1_extra_in_tkn0 = 25 *1e18
+amount_for_fees_tkn1_extra_in_tkn0 = 25 * 1e18
 amount_for_fees = amount_for_fees_tkn0 + amount_for_fees_tkn1_in_tkn0
 amount_for_fees *= 1e18
 amount_for_fees_tkn0 *= 1e18
@@ -43,15 +42,11 @@ amount_for_fees_tkn1_in_tkn0 *= 1e18
 extra_cover = 1  # 1
 extra_cover *= 1e18
 
-weth_balance_actor_and_caller = 10 *1e18
+weth_balance_actor_and_caller = 10 * 1e18
 
 # Very important argument: max total value that we flashloan
-# Multiply by 0.995 yo givr some wiggle room 
-max_value_of_flashloan = 0.995*(
-    (amount_for_fees)
-    * 100
-    / lending_pool_fee
-)
+# Multiply by 0.995 yo givr some wiggle room
+max_value_of_flashloan = 0.995 * ((amount_for_fees) * 100 / lending_pool_fee)
 
 
 min_final_profit_ratio = 0.01
@@ -92,3 +87,9 @@ elif network.show_active() in ETH_NETWORKS:
     gas_strategy = 50
 # this is based on a successful run of the flashloan call
 gas_limit = 1_800_000
+
+
+forced_reserves = [
+    (8812813628410115267563602, 19738137454139000000000000),
+    (38403585201566284827432565, 85967388690746000000000000),
+]

@@ -1,6 +1,6 @@
 from black import token
 import bot_config
-from scripts.prices import get_approx_price, get_best_dex_and_approx_price
+from scripts.prices import get_approx_price
 from scripts.utils import get_account, num_digits, get_wallet_balances
 from brownie import interface, config, network
 import warnings
@@ -24,16 +24,8 @@ def prepare_actor(_all_dex_to_pair_data, _all_reserves, _actor):
     ]
 
     required_balance_token0 = bot_config.amount_for_fees_tkn0 + 1000000
-    adjust_actor_balance(
-        _actor, token0, name0, decimals0, required_balance_token0, _all_reserves
-    )
-
-    buying_dex_index, best_approx_price = get_best_dex_and_approx_price(_all_reserves, buying=True)
-    required_balance_token1 = (
-        bot_config.amount_for_fees_tkn1_in_tkn0
-        + bot_config.amount_for_fees_tkn1_extra_in_tkn0
-    ) / best_approx_price
-
+    adjust_actor_balance(_actor, token0, name0, decimals0, required_balance_token0)
+    required_balance_token1 = bot_config.amount_for_fees_tkn1_in_tkn0
 
     adjust_actor_balance(
         _actor,
@@ -41,7 +33,6 @@ def prepare_actor(_all_dex_to_pair_data, _all_reserves, _actor):
         name1,
         decimals1,
         required_balance_token1,
-        _all_reserves[buying_dex_index],
     )
 
     # TODO: Do I need to return the actor here?
@@ -55,7 +46,6 @@ def adjust_actor_balance(
     _name: str,
     _decimals: int,
     _required_balance: int,  # in wei
-    _dex_reserves: tuple[int, int],
 ) -> None:
     account = get_account()
     # We need to adjust the decimals here
@@ -87,74 +77,7 @@ def adjust_actor_balance(
             tx.wait(1)
             print("Transfered")
         else:
-            print(f"Caller has not enough {_name}")
-            print(
-                f"Sending wrapped mainnet token to actor so that actor can swap it for {_name}"
-            )
-
-            # FIXME: caution: here I am assuming that WFTM=token0. To do it in general
-            # I need to make a get_approx_price function that is able to compute
-            # more prices than just token0/token1 ot token1/token0
-            wrapped_token_address = config["networks"][network.show_active()][
-                "token_addresses"
-            ]["wrapped_main_token_address"]
-
-            assert (
-                wrapped_token_address
-                == config["networks"][network.show_active()]["token_addresses"][
-                    bot_config.token_names[0]
-                ],
-                "This part of this function is implemented assuming that token0 == wrapped main token."
-                "General functionality not yet implemented",
-            )
-
-            price_wrapped_maintoken_to_token1 = get_approx_price(
-                _dex_reserves, buying=False
-            )
-            # The token being sent away has 18 decimals if it is WFTM
-            # TODO: make it general (any decimals, seee FIXME and assertion above)
-            _max_amount_in = int(
-                (amount_missing / price_wrapped_maintoken_to_token1)
-                * 10 ** (18 - _decimals)
-            )
-            # we add some % more to accomodate price variability
-            _max_amount_in *= 1.05
-
-            wrapped_token = interface.IERC20(wrapped_token_address)
-            print("Approving spending for actor...")
-            # TODO: no need to approve?
-            tx = wrapped_token.approve(
-                _actor.address, _max_amount_in, {"from": account}
-            )
-            tx.wait(1)
-            print("Approved")
-
-            print(f"Sending {_max_amount_in} wrapped main token to actor...")
-            tx = wrapped_token.transfer(
-                _actor.address, _max_amount_in, {"from": account}
-            )
-            tx.wait(1)
-            print("sent")
-
-            # TODO: It may make more sense to just swap directly with the router instead
-            # of transferring first to the actor and then making the actor swap. I think it is
-            # basically the same, but maybe it makes more sense from a logical perspective
-
-            # router_address = config["networks"][network.show_active()][
-            #     bot_config.dex_names[0]
-            # ]
-            # router = interface.UniswapV2Router(router_address)
-            # router.swapTokensForExactTokens(amount_token_to_actor, _max_amount_in, [wrapped_token_address, _token.address], )
-
-            swap_tokens_for_exact_tokens(
-                wrapped_token_address,
-                _token.address,
-                amount_missing,
-                _max_amount_in,
-                _name,
-                account,
-                _actor,
-            )
+            raise Exception(f"Caller has not enough {_name}")
 
 
 def swap_tokens_for_exact_tokens(

@@ -32,4 +32,6 @@ interface AggregatorV3Interface {
             uint256 updatedAt,
             uint80 answeredInRound
         );
+
+    function getLatestPrice() external view returns (uint256);
 }

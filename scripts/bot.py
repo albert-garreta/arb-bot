@@ -7,7 +7,6 @@ from scripts.prices import (
     get_approx_price,
     get_arbitrage_profit_info,
     get_dex_ammount_out,
-    get_best_dex_and_approx_price,
 )
 from scripts.utils import (
     ensure_amount_of_wrapped_maintoken,
@@ -31,10 +30,10 @@ MAIN_NETWORKS = ["ftm-main", "mainnet"]
 
 def preprocess(_verbose=True):
     actor = deploy_actor()
-    ensure_amount_of_wrapped_maintoken(
-        bot_config.weth_balance_actor_and_caller,
-        actor,
-    )
+    # ensure_amount_of_wrapped_maintoken(
+    #     bot_config.weth_balance_actor_and_caller,
+    #     actor,
+    # )
     all_dex_to_pair_data = get_all_dex_to_pair_data()
 
     # TODO: same code used in another function in this script.
@@ -76,15 +75,11 @@ def run_bot(all_dex_to_pair_data, actor):
                 f"Starting epoch after waiting for {time.time() - last_recorded_time}s"
             )
             last_recorded_time = time.time()
-
-            # NOTE: this is the most expensive call in a run without action.
-            reserves_all_dexes = get_all_dex_reserves(all_dex_to_pair_data)
-
-            run_epoch(all_dex_to_pair_data, reserves_all_dexes, actor)
+            run_epoch(all_dex_to_pair_data, actor)
         time.sleep(bot_config.time_between_epoch_due_checks)
 
 
-def run_epoch(_all_dex_to_pair_data, _all_reserves, _actor):
+def run_epoch(_all_dex_to_pair_data, _actor):
     if (
         network.show_active()
         in LOCAL_BLOCKCHAIN_ENVIRONMENTS + NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS
@@ -93,8 +88,12 @@ def run_epoch(_all_dex_to_pair_data, _all_reserves, _actor):
         force_success = True
     else:
         force_success = False
+        
+    # NOTE: this is the most expensive call in a run without action.
+    _all_reserves = get_all_dex_reserves(_all_dex_to_pair_data)
+    price_tkn1_to_tkn0 = get_approx_price(_all_reserves, _buying=True)
 
-    arb_info = look_for_arbitrage(_all_reserves, force_success)
+    arb_info = look_for_arbitrage(_all_reserves, price_tkn1_to_tkn0, force_success)
     if arb_info and not bot_config.debug_mode:
         action_successful = act(_all_dex_to_pair_data, _all_reserves, arb_info, _actor)
         if action_successful:
@@ -104,7 +103,7 @@ def run_epoch(_all_dex_to_pair_data, _all_reserves, _actor):
             process_failure(_all_dex_to_pair_data, _all_reserves, _actor)
 
 
-def look_for_arbitrage(_reserves_all_dexes, _force_success=False):
+def look_for_arbitrage(_reserves_all_dexes, _price_tkn1_to_tkn0, _force_success=False):
     # The force_sucess argument is used for testing purposes
     (
         final_profit_ratio,
@@ -114,6 +113,7 @@ def look_for_arbitrage(_reserves_all_dexes, _force_success=False):
         selling_dex_index,
     ) = get_arbitrage_profit_info(
         _reserves_all_dexes,
+        _price_tkn1_to_tkn0,
         bot_config.dex_fees,
         bot_config.approx_slippages,
         bot_config.lending_pool_fee,
@@ -133,14 +133,7 @@ def look_for_arbitrage(_reserves_all_dexes, _force_success=False):
 
         print_and_log(msg, bot_config.log_searches_path)
         tkn0_to_buy = 0.5 * optimal_amount_in
-        price_tkn1_to_tkn0 = get_approx_price(
-            _reserves_all_dexes[buying_dex_index], buying=True
-        )
-        tkn1_to_sell = 0.5 * optimal_amount_in / price_tkn1_to_tkn0
-
-        if _force_success:
-            tkn0_to_buy = bot_config.forced_tkn0_to_buy
-            tkn1_to_sell = bot_config.forced_tkn1_to_sell
+        tkn1_to_sell = 0.5 * optimal_amount_in / _price_tkn1_to_tkn0
 
         return (  # TODO: create structure for this data
             final_profit_ratio,
@@ -254,7 +247,7 @@ def act(_all_dex_to_pair_data, _all_reserves, arb_info, _actor, _verbose=True):
     print_and_log(msg, bot_config.log_actions_path)
 
     msg = ""
-    best_selling_dex, price_tkn0_to_tkn1 = get_best_dex_and_approx_price(
+    price_tkn0_to_tkn1 = get_approx_price(
         _all_reserves, buying=False
     )
     try:
@@ -267,8 +260,8 @@ def act(_all_dex_to_pair_data, _all_reserves, arb_info, _actor, _verbose=True):
             price_tkn0_to_tkn1,
             {
                 "from": account,
-               # "gas_price": bot_config.gas_strategy,
-               # "gas_limit": bot_config.gas_limit,
+                # "gas_price": bot_config.gas_strategy,
+                # "gas_limit": bot_config.gas_limit,
             },
         )
         tx.wait(1)
