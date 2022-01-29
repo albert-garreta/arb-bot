@@ -1,6 +1,7 @@
 from brownie import accounts, network, config, interface
 from scipy.optimize import linprog
 from datetime import datetime
+import sys, getopt
 
 NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS = ["development", "ganache"]
 LOCAL_BLOCKCHAIN_ENVIRONMENTS = NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS + [
@@ -28,9 +29,16 @@ def get_address(_name):
     return config["networks"][network.show_active()][_name]
 
 
-def get_token_addresses(_token_names):
-    network_addresses = config["networks"][network.show_active()]
-    return [network_addresses[name] for name in _token_names]
+def get_token_names_and_addresses():
+    token_names = config["networks"][network.show_active()]["token_names"]
+    # we do it like this to avoid getting the wrapped mainnet token in this list
+    token_addresses = [
+        config["networks"][network.show_active()]["token_addresses"][token_name]
+        for token_name in token_names
+    ]
+    print("Token names:", token_names)
+    print("Token addresses:", token_addresses)
+    return token_names, token_addresses
 
 
 def get_all_dexes_and_factories(dex_list):
@@ -40,11 +48,9 @@ def get_all_dexes_and_factories(dex_list):
     return routers_and_factories
 
 
-def get_dex_router_and_factory(_dex_name="default_dex"):
+def get_dex_router_and_factory(_dex_name):
     network_addresses = config["networks"][network.show_active()]
-    if _dex_name == "default_dex":
-        _dex_name = network_addresses["dex_addresses"]["default_dex"]
-    dex_addresses = network_addresses["dex_addresses"][_dex_name]
+    dex_addresses = network_addresses["dexes"][_dex_name]
 
     # Do I need to instantiate them, or would it be enough to just pass the address?
     router = interface.IUniswapV2Router02(dex_addresses["swap_router_V2_address"])
@@ -83,14 +89,25 @@ def get_account(index=None, id=None):
         return accounts.add(config["wallets"]["from_key"])
 
 
-def deposit_main_token_into_wrapped_version(_amount: int):
-    # the amount is in Wei
-    print(f"Depositing {_amount} mainnet token into its wrapped ERC20 version...")
-    tx = interface.IWeth(
-        config["networks"][network.show_active()]["wrapped_main_token_address"]
-    ).deposit({"from": get_account(), "value": _amount})
-    tx.wait(1)
-    print("Deposit done")
+def ensure_amount_of_wrapped_maintoken(_amount: int, _actor):
+    # Makes sure that the balance between actor and caller of wrapped
+    # maintoken is the one passed in the argument
+
+    weth = interface.IWeth(
+        config["networks"][network.show_active()]["token_addresses"][
+            "wrapped_main_token_address"
+        ]
+    )
+    actor_balance = weth.balanceOf(_actor.address)
+    caller_balance = weth.balanceOf(get_account())
+    total_balance = actor_balance + caller_balance
+    if total_balance < _amount:
+        print(f"Depositing {_amount} mainnet token into its wrapped ERC20 version...")
+        tx = weth.deposit({"from": get_account(), "value": _amount - total_balance})
+        tx.wait(1)
+        print("Deposit done")
+    else:
+        print("Caller already has enough Wrapped main token")
 
 
 contract_name_to_contract_type = {
@@ -128,9 +145,6 @@ def get_contract(contract_name):
     else:
         try:
             contract_address = config["networks"][network.show_active()][contract_name]
-            # contract = Contract.from_abi(
-            #     contract_type._name, contract_address, contract_type.abi
-            # )
             contract = contract_type(contract_address)
 
         except KeyError:
@@ -155,3 +169,14 @@ def print_args_wrapped(fun):
         return fun(*args, **kwargs)
 
     return w_fun
+
+
+def process_line_commands():
+    long_options = ["slippage=", "lending_fee="]
+    short_options = "s:lf:"
+    try:
+        arguments, values = getopt.getopt(sys.argv[1:], short_options, long_options)
+    except getopt.error as err:
+        # Output error, and return with an error code
+        print(str(err))
+        sys.exit(2)

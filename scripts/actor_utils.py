@@ -1,9 +1,10 @@
 from black import token
 import bot_config
-from scripts.prices import get_approx_price
+from scripts.prices import get_approx_price, get_best_dex_and_approx_price
 from scripts.utils import get_account, num_digits, get_wallet_balances
 from brownie import interface, config, network
 import warnings
+import numpy as np
 
 
 def prepare_actor(_all_dex_to_pair_data, _all_reserves, _actor):
@@ -22,19 +23,25 @@ def prepare_actor(_all_dex_to_pair_data, _all_reserves, _actor):
         bot_config.token_names[1]
     ]
 
-    # TODO: Here we are choosing a dex arbitrarily. Probably it does not matter much?
-    reserves0 = _all_reserves[0]
+    required_balance_token0 = bot_config.amount_for_fees_tkn0 + 1000000
+    adjust_actor_balance(
+        _actor, token0, name0, decimals0, required_balance_token0, _all_reserves
+    )
 
-    # The -1e18 is to leave some WFTM on the account to accomodate some friction while preparing the actor
-    required_balance_token0 = 1.05 * (bot_config.amount_for_fees) / 2
+    buying_dex_index, best_approx_price = get_best_dex_and_approx_price(_all_reserves, buying=True)
+    required_balance_token1 = (
+        bot_config.amount_for_fees_tkn1_in_tkn0
+        + bot_config.amount_for_fees_tkn1_extra_in_tkn0
+    ) / best_approx_price
+
+
     adjust_actor_balance(
-        _actor, token0, name0, decimals0, required_balance_token0, reserves0
-    )
-    required_balance_token1 = required_balance_token0 / get_approx_price(
-        reserves0, buying=True
-    )
-    adjust_actor_balance(
-        _actor, token1, name1, decimals1, required_balance_token1, reserves0
+        _actor,
+        token1,
+        name1,
+        decimals1,
+        required_balance_token1,
+        _all_reserves[buying_dex_index],
     )
 
     # TODO: Do I need to return the actor here?
@@ -52,18 +59,21 @@ def adjust_actor_balance(
 ) -> None:
     account = get_account()
     # We need to adjust the decimals here
-    _required_balance = int(_required_balance * 10 ** (_decimals - 18))
+    _required_balance = int(_required_balance / 10 ** (18 - _decimals))
     print(f"Required balance of {_name} for actor: {_required_balance}")
     tokens_aldready_in_actor = _token.balanceOf(_actor.address, {"from": account})
     print(f"Tokens {_name} already in actor: {tokens_aldready_in_actor}")
     amount_missing = max(_required_balance - tokens_aldready_in_actor, 0)
     print(f"Amount missing: {amount_missing}")
 
-    if amount_missing > 0:
+    if amount_missing <= 0:
+        print("Actor has already enough balance")
+    else:
         token_balance_caller = _token.balanceOf(account.address)
         print(f"Caller {_name} balance {token_balance_caller}")
         if token_balance_caller >= amount_missing:
             print(f"Caller has enough {_name}. Sending it to actor...")
+            # TODO: do I need to approve here?
             tx = _token.approve(
                 _actor.address, amount_missing + 1000, {"from": account}
             )
@@ -81,17 +91,28 @@ def adjust_actor_balance(
             print(
                 f"Sending wrapped mainnet token to actor so that actor can swap it for {_name}"
             )
+
             # FIXME: caution: here I am assuming that WFTM=token0. To do it in general
             # I need to make a get_approx_price function that is able to compute
             # more prices than just token0/token1 ot token1/token0
             wrapped_token_address = config["networks"][network.show_active()][
-                "wrapped_main_token_address"
-            ]
+                "token_addresses"
+            ]["wrapped_main_token_address"]
+
+            assert (
+                wrapped_token_address
+                == config["networks"][network.show_active()]["token_addresses"][
+                    bot_config.token_names[0]
+                ],
+                "This part of this function is implemented assuming that token0 == wrapped main token."
+                "General functionality not yet implemented",
+            )
+
             price_wrapped_maintoken_to_token1 = get_approx_price(
                 _dex_reserves, buying=False
             )
             # The token being sent away has 18 decimals if it is WFTM
-            # TODO: make it genera (any decimals, seee FIXME above)
+            # TODO: make it general (any decimals, seee FIXME and assertion above)
             _max_amount_in = int(
                 (amount_missing / price_wrapped_maintoken_to_token1)
                 * 10 ** (18 - _decimals)
@@ -101,6 +122,7 @@ def adjust_actor_balance(
 
             wrapped_token = interface.IERC20(wrapped_token_address)
             print("Approving spending for actor...")
+            # TODO: no need to approve?
             tx = wrapped_token.approve(
                 _actor.address, _max_amount_in, {"from": account}
             )
@@ -108,9 +130,10 @@ def adjust_actor_balance(
             print("Approved")
 
             print(f"Sending {_max_amount_in} wrapped main token to actor...")
-            wrapped_token.transfer(
+            tx = wrapped_token.transfer(
                 _actor.address, _max_amount_in, {"from": account}
             )
+            tx.wait(1)
             print("sent")
 
             # TODO: It may make more sense to just swap directly with the router instead
@@ -132,10 +155,6 @@ def adjust_actor_balance(
                 account,
                 _actor,
             )
-
-    else:
-        # TODO: Why did this happen?
-        warnings.warn("ATTENTION: actor holds too much tokens0s. How did this happen?")
 
 
 def swap_tokens_for_exact_tokens(

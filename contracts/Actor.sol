@@ -32,6 +32,7 @@ contract Actor is FlashLoanReceiverBase, Ownable {
     // TODO: we know this will be a length-2 array of length-2 arrays:
     // specify for efficiency
     uint256[] public swapReturns;
+    uint256 public netValueGained;
 
     constructor(
         address[] memory _swapRouterAddresses,
@@ -56,13 +57,17 @@ contract Actor is FlashLoanReceiverBase, Ownable {
         address[] memory _tokenAddresses,
         uint256[] memory amounts,
         uint8 buyingDexIndex,
-        uint8 sellingDexIndex
+        uint8 sellingDexIndex,
+        uint256 priceTkn0Tkn1
     ) public onlyOwner {
         // TODO: Does the onlyOwner here prevent grieffing attacks?
         address receiverAddress = address(this);
         uint256[] memory modes = new uint256[](amounts.length);
         // TODO: is it faster if I encode in python?
-        bytes memory params = abi.encode(uint8(sellingDexIndex));
+        bytes memory params = abi.encode(
+            uint8(sellingDexIndex),
+            uint256(priceTkn0Tkn1)
+        );
 
         for (uint256 i = 0; i < amounts.length; i++) {
             // 0 = no debt, 1 = stable, 2 = variable
@@ -110,7 +115,11 @@ contract Actor is FlashLoanReceiverBase, Ownable {
             );
         }
 
-        uint8 sellingDexIndex = abi.decode(params, (uint8));
+        (uint8 sellingDexIndex, uint256 priceTkn0Tkn1) = abi.decode(
+            params,
+            (uint8, uint256)
+        );
+
         uint8 buyingDexIndex = 1;
         if (sellingDexIndex == 1) {
             buyingDexIndex = 0;
@@ -134,14 +143,34 @@ contract Actor is FlashLoanReceiverBase, Ownable {
 
         // Approve the LendingPool contract allowance to *pull* the owed amount
         for (uint256 i = 0; i < assets.length; i++) {
-            uint256 amountOwing = amounts[i] + premiums[i];
             // TODO: check if the transaction reverts if we lost money
             require(
-                IERC20(assets[i]).balanceOf(initiator) - amountOwing >= 0,
+                IERC20(assets[i]).balanceOf(initiator) -
+                    (amounts[i] + premiums[i]) >=
+                    0,
                 "amountOwing is greater than the flashloan initiatior balance"
             );
-            IERC20(assets[i]).approve(address(LENDING_POOL), amountOwing);
+
+            IERC20(assets[i]).approve(
+                address(LENDING_POOL),
+                amounts[i] + premiums[i]
+            );
         }
+
+        netValueGained =
+            (swapReturns[0] / priceTkn0Tkn1) +
+            swapReturns[1] -
+            (amounts[0] +
+                premiums[0] +
+                amounts[1] +
+                premiums[1] /
+                priceTkn0Tkn1 +
+                preLoanBalances[0] +
+                (preLoanBalances[1] / priceTkn0Tkn1));
+        require(
+            netValueGained >= 0,
+            "The net value of the operation is negative"
+        );
 
         return true;
     }
@@ -155,7 +184,7 @@ contract Actor is FlashLoanReceiverBase, Ownable {
         uint256 _minAmountOut1,
         uint8 _buyingDexIndex,
         uint8 _sellingDexIndex
-    ) public {
+    ) internal {
         // tx = _token0.approve(_swapper.address, _amount_in, {"from": account})
         // tx.wait(1)
 
@@ -167,7 +196,6 @@ contract Actor is FlashLoanReceiverBase, Ownable {
             _buyingDexIndex
         );
 
-        // Only for testing
         swapReturns.push(amountsOut[1]);
         // _token1.approve(_swapper.address, amount_out_first_swap, {"from": account})
 
@@ -242,13 +270,11 @@ contract Actor is FlashLoanReceiverBase, Ownable {
         // twoHorpArbitrage function
 
         IERC20 tokenIn = IERC20(_tokenInAddress);
-        tokenIn.approve(address(swapRouters[_dexIndex]), _maxAmountIn+100000);
+        tokenIn.approve(address(swapRouters[_dexIndex]), _maxAmountIn + 100000);
 
         require(
-            tokenIn.allowance(
-                address(this),
-                address(swapRouters[_dexIndex])
-            ) >= _maxAmountIn
+            tokenIn.allowance(address(this), address(swapRouters[_dexIndex])) >=
+                _maxAmountIn
         );
         require(tokenIn.balanceOf(address(this)) >= _maxAmountIn);
 
@@ -259,7 +285,7 @@ contract Actor is FlashLoanReceiverBase, Ownable {
         uint256[] memory amounts = swapRouters[_dexIndex]
             .swapTokensForExactTokens(
                 _amountOut,
-                _maxAmountIn, 
+                _maxAmountIn,
                 path,
                 address(this),
                 block.timestamp

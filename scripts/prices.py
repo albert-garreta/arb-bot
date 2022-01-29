@@ -3,6 +3,7 @@ from scripts.utils import get_account, print_args_wrapped
 import bot_config
 import numpy as np
 from scipy.optimize import minimize_scalar
+from brownie import interface, config, network
 
 
 def get_arbitrage_profit_info(
@@ -44,8 +45,8 @@ def get_arbitrage_profit_info(
         print(f"Selling dex: {bot_config.dex_names[(buying_dex_index + 1) % 2]}")
         print(f"Reserves buing dex: {reserves_buying_dex}")
         print(f"Reserves selling dex: {reserves_selling_dex}")
-        print(f"Optimal amount in: {opt_amount_in/1e18}")
-        print(f"Final amount out: {opt_amount_out/1e18}")
+        print(f"Optimal amount in: {opt_amount_in/(10**bot_config.decimals[0])}")
+        print(f"Final amount out: {opt_amount_out/(10**bot_config.decimals[0])}")
         print(f"Profit %: {final_profit_ratio}\n")
     return (
         final_profit_ratio,
@@ -93,7 +94,7 @@ def get_buying_dex_and_amounts_in_out(
             slippage_buy_dex,
             slippage_sell_dex,
             _lending_pool_fee,
-            bot_config.max_amount_in,
+            bot_config.max_value_of_flashloan,
             _return_optimal_amount_out=True,
             _verbose=False,
         )
@@ -105,8 +106,8 @@ def get_buying_dex_and_amounts_in_out(
                 f"The token1/token0 price "
                 f"in {dex_name} is approx (frictionless) "
                 f"{get_approx_price(_reserves[dex_index], buying=True)}\n"
-                f"Optimal amount in: {opt_amount_in/1e18}\n"
-                f"Optimal amount out: {opt_amount_out/1e18}"
+                # f"Optimal amount in: {opt_amount_in/(10**bot_config.decimals[0])}\n"
+                # f"Optimal amount out: {opt_amount_out/(10**bot_config.decimals[0])}"
             )
             if bot_config.debug_mode:
                 # Currently just a placeholder for quick debugging
@@ -196,13 +197,31 @@ def get_dex_ammount_out(_reserve0, _reserve1, _amount_in, _dex_fee, _slippage=0)
     return amount_out
 
 
-def get_approx_price(_dex_reserves, buying=True):
+def get_approx_price(_dex_reserves, _buying=True):
+    if bot_config.get_frictionless_price_from_oracle():
+        return get_oracle_price(buying=_buying)
     reserve0, reserve1 = _dex_reserves
-    if buying:
+    if _buying:
         return reserve0 / reserve1
     else:
         return reserve1 / reserve0
 
+
+def get_oracle_price(oracle=None, buying=True):
+    if oracle is None:
+        oracle_address = config["network"][network.show_active()]["price_feed_address"]
+        oracle = interface.AggregatorV3Interface(oracle_address)
+    price = oracle.getLatestPrice()  # FTM to USD
+    if buying:
+        return 1 / price
+    else:
+        return price
+
+
+def get_best_dex_and_approx_price(_dex_reserves, _buying=True):
+    price_dex0 = get_approx_price(_dex_reserves[0], buying=_buying)
+    price_dex1 = get_approx_price(_dex_reserves[1], buying=_buying)
+    return np.argmin([price_dex0, price_dex1]), min([price_dex0, price_dex1])
 
 
 def get_optimal_amount_in(
@@ -213,7 +232,7 @@ def get_optimal_amount_in(
     _slippage_buy_dex,
     _slippage_sell_dex,
     _lending_fee,
-    _max_amount_in,
+    _max_value_of_flashloan,
     _return_optimal_amount_out=False,
     _verbose=False,
 ):
@@ -241,7 +260,7 @@ def get_optimal_amount_in(
 
     _f = reverse(f)
 
-    res = minimize_scalar(_f, bounds=(0, _max_amount_in), method="bounded")
+    res = minimize_scalar(_f, bounds=(0, _max_value_of_flashloan), method="bounded")
     optimal_amount_in = res.x
     if _verbose:
         print(f"Optimal initial amount: {optimal_amount_in}")

@@ -53,20 +53,31 @@ networks:
         swap_router_V2_address: "0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F"
         uniswap_factory_address: "0xC0AEe478e3658e2610c5F7A4A2E1777cE9e4f2Ac"
   ftm-main:
-    # this is actually wFTM, but we keep the name weth for simplicity of code
-    token0: "0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83" # WFTM
-    token1: "0x04068DA6C83AFCFA0e13ba15A6696662335D5B75" # USDC
-    #token1: "0x049d68029688eAbF473097a2fC38ef61633A3C7A" #fUSDT
-    #token1: "0x6c021Ae822BEa943b2E66552bDe1D2696a53fbB7" #TOMB
-    #token0: "0x74b23882a30290451A17c44f4F05243b6b58C76d" #WETH
-    wrapped_main_token_address: "0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83"
+    token_names:
+      - "WFTM"
+      - "USDC"
+    token_addresses:
+      # this is actually wFTM, but we keep the name weth for simplicity of code
+      WFTM: "0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83" # WFTM
+      USDC: "0x04068DA6C83AFCFA0e13ba15A6696662335D5B75" # USDC
+      #token1: "0x049d68029688eAbF473097a2fC38ef61633A3C7A" #fUSDT
+      #token1: "0x6c021Ae822BEa943b2E66552bDe1D2696a53fbB7" #TOMB
+      #token0: "0x74b23882a30290451A17c44f4F05243b6b58C76d" #WETH
+      wrapped_main_token_address: "0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83"
     lending_pool_addresses_provider_address: "0x6c793c628Fe2b480c5e6FB7957dDa4b9291F9c9b"
-    dex_addresses:
-      default_dex: "spiritswap"
+    price_feed_address: "0xf4766552D15AE4d256Ad41B6cf2933482B0680dc"
+    dexes:
+      names:
+        - "spookyswap"
+        - "spiritswap"
       spookyswap:
+        fee: 0.2
+        approx_slippage: 0.012
         swap_router_V2_address: "0xF491e7B69E4244ad4002BC14e878a34207E38c29"
         uniswap_factory_address: "0x152eE697f2E276fA89E96742e9bB9aB1F2E61bE3"
       spiritswap:
+        fee: 0.3
+        approx_slippage: 0.09
         swap_router_V2_address: "0x16327E3FbDaCA3bcF7E38F5Af2599D2DDc33aE52"
         uniswap_factory_address: "0xEF45d134b73241eDa7703fa787148D9C9F4950b0"
   ftm-test:
@@ -76,16 +87,78 @@ networks:
     token0: "0x076877073D287Ee8c10878B190d7166367899fdA"
     wrapped_main_token_address: "0xf1277d1Ed8AD466beddF92ef448A132661956621"
     lending_pool_addresses_provider_address: "0x6c793c628Fe2b480c5e6FB7957dDa4b9291F9c9b"
+    dex_names:
+      - "spookyswap"
+      - "spiritswap"
     dex_addresses:
-      default_dex: "spiritswap"
+      default_dex: "spookyswap"
       spookyswap:
         swap_router_V2_address: "0xcCAFCf876caB8f9542d6972f87B5D62e1182767d"
         uniswap_factory_address: "0x5D479c2a7FB79E12Ac4eBBAeDB0322B4d5F9Fd02"
+        fee: 0.2
+        approx_slippage: 0.01
       spiritswap:
         # currently these are spookyswap's addresses. Couldn't find spirit's addresses
         swap_router_V2_address: "0xcCAFCf876caB8f9542d6972f87B5D62e1182767d"
         uniswap_factory_address: "0x5D479c2a7FB79E12Ac4eBBAeDB0322B4d5F9Fd02"
+        fee: 0.3
+        approx_slippage: 0.05
+
   ftm-main-fork:
+    token_names:
+      - "WFTM"
+      - "USDC"
+    token_addresses:
+      WFTM: "0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83" # WFTM
+      USDC: "0x049d68029688eAbF473097a2fC38ef61633A3C7A" # USDC
+      wrapped_main_token_address: "0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83"
+    # usdt_address: "0x6c021Ae822BEa943b2E66552bDe1D2696a53fbB7" # TOMB
+    # usdt_address: "0x4cdF39285D7Ca8eB3f090fDA0C069ba5F4145B37" # TSHARE
+    lending_pool_addresses_provider_address: "0x6c793c628Fe2b480c5e6FB7957dDa4b9291F9c9b"
+    price_feed_address: "0xf4766552D15AE4d256Ad41B6cf2933482B0680dc"
+    dex_names:
+      - "spookyswap"
+      - "spiritswap"
+    dexes:
+      names:
+        - "spookyswap"
+        - "spiritswap"
+      spookyswap:
+        fee: 0.2
+        approx_slippage: 0.01
+        swap_router_V2_address: "0xF491e7B69E4244ad4002BC14e878a34207E38c29"
+        uniswap_factory_address: "0x152eE697f2E276fA89E96742e9bB9aB1F2E61bE3"
+      spiritswap:
+        fee: 0.3
+        approx_slippage: 0.05
+        swap_router_V2_address: "0x16327E3FbDaCA3bcF7E38F5Af2599D2DDc33aE52"
+        uniswap_factory_address: "0xEF45d134b73241eDa7703fa787148D9C9F4950b0"
+  avax-main:
+    token_names:
+      - "USDC"
+      - "WAVAX"
+    token_addresses:
+      WAVAX: "0xFvwEAhmxKfeiG8SnEvq42hc6whRyY3EFYAvebMqDNDGCgxN5Z" # AVAX
+      USDC: "0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e" # USDC
+      wrapped_main_token_address: "0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83"
+    # usdt_address: "0x6c021Ae822BEa943b2E66552bDe1D2696a53fbB7" # TOMB
+    # usdt_address: "0x4cdF39285D7Ca8eB3f090fDA0C069ba5F4145B37" # TSHARE
+    lending_pool_addresses_provider_address: "0x6c793c628Fe2b480c5e6FB7957dDa4b9291F9c9b"
+    dexes:
+      names:
+        - "joe"
+        - "pangolin"
+      joe:
+        fee: 0.3
+        approx_slippage: 0.01
+        swap_router_V2_address: "0x60aE616a2155Ee3d9A68541Ba4544862310933d4"
+        uniswap_factory_address: "0x9Ad6C38BE94206cA50bb0d90783181662f0Cfa10"
+      pangoling:
+        fee: 0.3
+        approx_slippage: 0.05
+        swap_router_V2_address: "0xE54Ca86531e17Ef3616d22Ca28b0D458b6C89106"
+        uniswap_factory_address: "0xefa94DE7a4656D787667C749f7E1223D71E9FD88"
+  avax-test:
     token0: "0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83" # WFTM
     token1: "0x049d68029688eAbF473097a2fC38ef61633A3C7A" # USDC
     wrapped_main_token_address: "0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83"

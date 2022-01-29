@@ -1,6 +1,10 @@
 from tkinter import E
-from scripts.utils import get_account, get_dex_router_and_factory, get_token_addresses
-from brownie import interface
+from scripts.utils import (
+    get_account,
+    get_dex_router_and_factory,
+    get_token_names_and_addresses,
+)
+from brownie import interface, network
 import bot_config
 
 
@@ -11,9 +15,6 @@ class dotdict(dict):
     __getattr__ = dict.get
     __setattr__ = dict.__setitem__
     __delattr__ = dict.__delitem__
-
-
-
 
 
 def get_dex_reserves(_pair_dex_data, _dex_index, _verbose=False):
@@ -37,11 +38,13 @@ def get_dex_reserves(_pair_dex_data, _dex_index, _verbose=False):
 
     return reserve0, reserve1
 
+
 def get_all_dex_reserves(_pair_dex_data) -> tuple[tuple[int, int]]:
     return [
         get_dex_reserves(_pair_dex_data, dex_index)
         for dex_index in range(len(bot_config.dex_names))
     ]
+
 
 def get_all_dex_to_pair_data():
     # TODO: should this and the following be placed here?
@@ -51,18 +54,21 @@ def get_all_dex_to_pair_data():
     # print(f"Token names: {bot_config.token_names}")
     dex_to_pair_data = dict()
     dex_to_pair_data["pair_data"] = {}
+    token_names, token_addresses = get_token_names_and_addresses()
+
     for dex_name in bot_config.dex_names:
-        pair, reversed_order = get_pair_info(dex_name)
+        pair, reversed_order = get_pair_info(dex_name, token_addresses)
         dex_to_pair_data["pair_data"][dex_name] = [
             pair,
             reversed_order,
         ]
     dex_to_pair_data["token_data"] = {}
-    token_names = bot_config.token_names
-    for token_name, token_address in zip(token_names, get_token_addresses(token_names)):
+    for token_name, token_address in zip(token_names, token_addresses):
         token = interface.IERC20(token_address)
         print(token.name())
         decimals = token.decimals()
+        bot_config.decimals.append(decimals)
+        bot_config.token_names.append(token_name)
         name = token.name()
         dex_to_pair_data["token_data"][token_name] = [
             token,
@@ -71,12 +77,13 @@ def get_all_dex_to_pair_data():
         ]
 
     print("Retrieved")
+    print("Token names", bot_config.token_names)
+    print("Token decimals", bot_config.decimals)
     return dex_to_pair_data
 
 
-def get_pair_info(_dex_name, _version="V2"):
+def get_pair_info(_dex_name, token_addresses, _version="V2"):
     account = get_account()
-    token_addresses = get_token_addresses(bot_config.token_names)
 
     _, factory = get_dex_router_and_factory(_dex_name)
 
