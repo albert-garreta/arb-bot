@@ -72,12 +72,12 @@ networks:
         - "spiritswap"
       spookyswap:
         fee: 0.2
-        approx_slippage: 0.0
+        approx_slippage: 0.02
         swap_router_V2_address: "0xF491e7B69E4244ad4002BC14e878a34207E38c29"
         uniswap_factory_address: "0x152eE697f2E276fA89E96742e9bB9aB1F2E61bE3"
       spiritswap:
         fee: 0.3
-        approx_slippage: 0.01
+        approx_slippage: 0.08
         swap_router_V2_address: "0x16327E3FbDaCA3bcF7E38F5Af2599D2DDc33aE52"
         uniswap_factory_address: "0xEF45d134b73241eDa7703fa787148D9C9F4950b0"
   ftm-test:
@@ -116,6 +116,7 @@ networks:
     # usdt_address: "0x4cdF39285D7Ca8eB3f090fDA0C069ba5F4145B37" # TSHARE
     lending_pool_addresses_provider_address: "0x6c793c628Fe2b480c5e6FB7957dDa4b9291F9c9b"
     price_feed_address: "0xf4766552D15AE4d256Ad41B6cf2933482B0680dc"
+
     dexes:
       names:
         - "spookyswap"

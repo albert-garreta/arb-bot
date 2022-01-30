@@ -51,15 +51,18 @@ def run_bot(_arbitrage_data, _actor):
 
 
 def run_epoch(_arbitrage_data, _actor, _verbose=True):
-    arb_data = update_arbitrage_data(_arbitrage_data)
+    _arbitrage_data.update_to_best_possible()
     if _verbose:
-        arb_data.print_summary()
-    if arb_data.passes_arbitrage_requirements():
-        arb_data.log_summary()
-        act(arb_data, _actor)
+        _arbitrage_data.print_summary()
+    if _arbitrage_data.passes_requirements():
+        _arbitrage_data.log_summary(bot_config.log_searches_path)
+        act(_arbitrage_data, _actor)
 
 
-def act(_arb_data, _actor, _verbose):
+def act(_arb_data, _actor, _verbose=True):
+    if bot_config.passive_mode:
+        return None
+
     print_and_log_action_info("pre_action", _verbose)
     try:
         flashloan_and_swap(_arb_data, _actor)

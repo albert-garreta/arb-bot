@@ -24,6 +24,7 @@ class GeneralData(dotdict):
         self.reversed_orders = []
         self.max_value_of_flashloan = None
         self.summary_message = None
+        self.reserves = []
         self.fill_in_data()
 
     def fill_in_data(self):
@@ -68,6 +69,46 @@ class GeneralData(dotdict):
         reversed_order = order_has_reversed(self.token_addresses, pair)
         return router, pair, reversed_order
 
+    def update_all_dexes_reserves(self) -> tuple[tuple[int, int]]:
+        if bot_config.force_actions:
+            return bot_config.forced_reserves
+        else:
+            self.reserves = [
+                self.get_dex_reserves(dex_index)
+                for dex_index in range(len(bot_config.dex_names))
+            ]
+
+    def get_dex_reserves(self, _dex_index):
+        # The way this function is designed is so that it is as fast as possible
+        # when retrieving prices. The arguments of the function consist of precomputed
+        # static data about the dex pairs and individual tokens
+        pair = self.token_pairs_dexes[_dex_index]
+        reserve0, reserve1, block_timestamp_last = pair.getReserves(
+            {"from": get_account()}
+        )
+        return self.prepare_reserves(reserve0, reserve1, _dex_index)
+
+    def prepare_reserves(self, _reserve0, _reserve1, _dex_index):
+        reversed_order = self.reversed_orders[_dex_index]
+        reserve0, reserve1 = update_reserves_if_reversed_order(
+            _reserve0, _reserve1, reversed_order
+        )
+        return update_reserves_decimals(reserve0, reserve1, self.decimals)
+
+
+def update_reserves_if_reversed_order(reserve0, reserve1, reversed_order):
+    if reversed_order:
+        _ = reserve0
+        reserve0 = reserve1
+        reserve1 = _
+    return reserve0, reserve1
+
+
+def update_reserves_decimals(reserve0, reserve1, decimals):
+    decimals0, decimals1 = decimals
+    reserve0 *= 10 ** (max(decimals0, decimals1) - decimals0)
+    reserve1 *= 10 ** (max(decimals0, decimals1) - decimals1)
+    return reserve0, reserve1
 
 
 def order_has_reversed(_token_addresses, _pair):

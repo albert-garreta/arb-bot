@@ -11,19 +11,18 @@ from copy import deepcopy
 from brownie import network, interface, config
 
 
-def find_optimal_borrow_amount_and_net_profit(_arbitrage_data, _verbose=True):
+def find_optimal_borrow_amount_and_net_profit(_arbitrage_data):
     f = fix_parameters_of_function(
         _fun=get_net_profit_v3,
         _args_1_tuple=(_arbitrage_data,),
     )
     _f = reverse_scalar_fun(f)
+    # FIXME: If using method='bound', this sometimes incorrectly returns the given upper bound
     res = minimize_scalar(
         _f, bounds=(0, _arbitrage_data.max_value_of_flashloan), method="bounded"
     )
     optimal_amount = res.x
     net_profit = f(optimal_amount)
-    print(f"Optimal borrow amount: {optimal_amount/(10**18)}")
-    print(f"Net profit: {net_profit/(10**18)}")
     return optimal_amount, net_profit
 
 
@@ -60,12 +59,12 @@ def get_dex_amount_out(_amount_in, dex_data):
 
 def get_dex_amount_in(_amount_out, dex_data):
     return _get_dex_amount_in(
-        _amount_out,
-        dex_data.reserves_in,
-        dex_data.reserves_out,
+        _amount_out ,
+        dex_data.reserves_in ,
+        dex_data.reserves_out ,
         dex_data.fee,
         dex_data.slippage,
-    )
+    ) 
 
 
 # @print_args_wrapped
@@ -84,7 +83,7 @@ def _get_dex_amount_in(_amount_out, _reserve_in, _reserve_out, _dex_fee, _slippa
     # TODO: the fee here appears once instead of twice as above. Is this advantageous?
     fee = 1 - _dex_fee / 100
     numerator = _amount_out * _reserve_in
-    denominator = _reserve_out + fee * _amount_out
+    denominator = _reserve_out - fee * _amount_out
     amount_out = numerator / denominator
     amount_out += 1  # this is in UniswapV2Library. Why?
     amount_out = amount_out * (1 - (_slippage / 100))

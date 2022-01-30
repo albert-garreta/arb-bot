@@ -58,11 +58,11 @@ weth_balance_actor_and_caller = 10 * 1e18
 # Very important argument: max total value that we flashloan
 # Multiply by 0.995 yo givr some wiggle room
 max_value_of_flashloan = 0.995 * ((amount_for_fees) * 100 / lending_pool_fee)
-
+max_value_of_flashloan = 5e23
 
 min_profit_ratio = 0.01
 if network.show_active() in FTM_NETWORKS:
-    min_net_profit = 1e18 * 1  # WFTM
+    min_net_profit = 3e18 * 1  # WFTM
 elif network.show_active() in ETH_NETWORKS:
     min_net_profit = 1e18 * 0.001
 else:
