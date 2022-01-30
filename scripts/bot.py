@@ -1,22 +1,24 @@
 from tkinter import E
-from brownie import chain, config, network, interface
+from brownie import chain
 import time, warnings, sys, getopt
 from scripts.deploy import deploy_actor
-from scripts.data import get_all_dex_to_pair_data, get_all_dex_reserves
+from scripts.data_structures.data import get_all_dex_reserves, update_arbitrage_data
 from scripts.prices.prices import (
     get_approx_price,
     get_dex_amount_out,
-    get_arbitrage_data,
 )
 from scripts.utils import (
     get_account,
     get_token_names_and_addresses,
-    print_and_log,
+    log,
     rebooter,
+)
+from bot_config import (
     LOCAL_BLOCKCHAIN_ENVIRONMENTS,
     NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS,
     MAIN_NETWORKS,
 )
+from scripts.data_structures.arbitrage_data import ArbitrageData
 from scripts.actor_utils import prepare_actor
 import bot_config
 from web3 import Web3
@@ -27,12 +29,12 @@ from brownie.network.gas.strategies import GasNowStrategy, ExponentialScalingStr
 
 
 def main():
-    all_dex_to_pair_data, actor = preprocess()
-    run_bot(all_dex_to_pair_data, actor)
+    arb_data, actor = preprocess()
+    run_bot(arb_data, actor)
 
 
 @rebooter
-def run_bot(all_dex_to_pair_data, actor):
+def run_bot(_arbitrage_data, _actor):
     """
     The bot runs an epoch every time bot_config["time_between_epoch_due_checks"] are mined.
     This is checked by epoch_due()
@@ -43,35 +45,32 @@ def run_bot(all_dex_to_pair_data, actor):
         if epoch_due(block_number):
             elapsed_time = time.time() - last_recorded_time
             last_recorded_time = time.time()
-            print(f"Starting epoch after waiting `for {elapsed_time}s")
-            run_epoch(all_dex_to_pair_data, actor)
+            print(f"Starting epoch after waiting for {elapsed_time}s")
+            run_epoch(_arbitrage_data, _actor)
         time.sleep(bot_config.time_between_epoch_due_checks)
 
 
-def run_epoch(_all_dex_to_pair_data, _actor, _verbose=True):
-    # NOTE: I think this is the most expensive call in an epoch without action.
-    _all_reserves = get_all_dex_reserves(_all_dex_to_pair_data)
-    arb_data = get_arbitrage_data(_all_reserves)
-    passes_arb_requirements = pass_arbitrage_requirements(arb_data)
+def run_epoch(_arbitrage_data, _actor, _verbose=True):
+    arb_data = update_arbitrage_data(_arbitrage_data)
     if _verbose:
         arb_data.print_summary()
-    if passes_arb_requirements:
+    if arb_data.passes_arbitrage_requirements():
+        arb_data.log_summary()
         act(arb_data, _actor)
 
 
-def pass_arbitrage_requirements(_arbitrage_data):
-    net_profit = _arbitrage_data.net_profit
-    profit_ratio = _arbitrage_data.get_profit_ratio()
-    requirement = profit_ratio > bot_config.min_profit_ratio
-    requirement = requirement and net_profit > bot_config.min_net_profit
-    requirement = requirement or bot_config.force_actions
-    requirement = requirement and (not bot_config.passive_mode)
-    return requirement
+def act(_arb_data, _actor, _verbose):
+    print_and_log_action_info("pre_action", _verbose)
+    try:
+        flashloan_and_swap(_arb_data, _actor)
+        print_and_log_action_info(_arb_data, "post_action", _verbose)
+    except Exception as e:
+        process_failure(e)
 
 
 def flashloan_and_swap(_arb_data, _actor):
     tx = _actor.requestFlashLoanAndAct(
-        token_addresses,
+        _arb_data.token_addresses,
         _arb_data.optimal_borrow_amt,
         _arb_data.buy_dex_index,
         _arb_data.sell_dex_index,
@@ -82,15 +81,6 @@ def flashloan_and_swap(_arb_data, _actor):
         },
     )
     tx.wait(1)
-
-
-def act(_arb_data, _actor, _verbose):
-    print_and_log_action_info("pre_action", _verbose)
-    try:
-        flashloan_and_swap(_arb_data, _actor)
-        print_and_log_action_info("post_action", _verbose)
-    except Exception as e:
-        process_failure(e)
 
 
 def process_failure(_exception):
@@ -145,45 +135,34 @@ def get_latest_block_number():
 
 def preprocess(_verbose=True):
     actor = deploy_actor()
-    all_dex_to_pair_data = get_all_dex_to_pair_data()
+    arbitrage_data = ArbitrageData()
 
     # TODO: same code used in another function in this script.
     # Refactor code into a function?
-    reserves_all_dexes = get_all_dex_reserves(all_dex_to_pair_data)
+    reserves_all_dexes = get_all_dex_reserves(arbitrage_data)
     if not bot_config.passive_mode:
-        actor = prepare_actor(all_dex_to_pair_data, reserves_all_dexes, actor)
+        actor = prepare_actor(arbitrage_data, reserves_all_dexes, actor)
     else:
         actor = None
-    return all_dex_to_pair_data, actor
+    return arbitrage_data, actor
 
 
-def print_and_log_action_info(stage, _verbose):
+def print_and_log_action_info(_arbitrage_data, _arb_info, _stage, _verbose):
+    return None
     if _verbose:
         pass
 
-    token0 = _arb_data.token0
-    token1 = _arb_data.token1
-    decimals0 = _arb_data.decimals0
-    decimals1 = _arb_data.decimals1
-    (
-        final_profit_ratio,
-        tkn0_to_buy,
-        tkn1_to_sell,
-        final_amount_out,
-        buying_dex_index,
-        selling_dex_index,
-    ) = arb_info
+    tokens = _arbitrage_data.tokens
+    decimals = _arbitrage_data.decimals
 
     # fix decimals, right now all token denominations are in wei
-    tkn0_to_buy /= 10 ** (18 - decimals0)
-    tkn1_to_sell /= 10 ** (18 - decimals1)
+    tkn0_to_buy /= 10 ** (18 - decimals[0])
+    tkn1_to_sell /= 10 ** (18 - decimals[1])
     print(tkn0_to_buy, tkn1_to_sell)
 
     # TODO: when creating a data structure, make it so that decimals are returned in a list,
     # same with tokens, names, etc
-    decimals = [decimals0, decimals1]
     amts = [tkn0_to_buy, tkn1_to_sell]
-    tokens = [token0, token1]
     token_names, token_addresses = get_token_names_and_addresses()
 
     account = get_account()

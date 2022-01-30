@@ -2,20 +2,15 @@ from brownie import accounts, network, config, interface
 from scipy.optimize import linprog
 from datetime import datetime
 import sys, getopt
-
-NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS = ["development", "ganache"]
-LOCAL_BLOCKCHAIN_ENVIRONMENTS = NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS + [
-    "mainnet-fork",
-    "ftm-main-fork",
-]
-ETH_NETWORKS = ["mainnet", "mainnet-fork", "kovan"]
-FTM_NETWORKS = ["ftm-main", "ftm-main-fork", "ftm-test"]
-MAIN_NETWORKS = ["ftm-main", "mainnet"]
+import bot_config
+from bot_config import (
+    LOCAL_BLOCKCHAIN_ENVIRONMENTS,
+    NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS,
+)
 
 
-def print_and_log(msg, path):
+def log(msg, path):
     msg = f"\n{datetime.now()}\n" + msg
-    print(msg)
     with open(path, "a") as f:
         f.write(msg)
 
@@ -24,9 +19,13 @@ def num_digits(number: int) -> int:
     return len(str(number))
 
 
-def fix_parameters_of_function(_fun, _args_1):
+def mult_list_by_scalar(_list, _scalar):
+    return [_scalar * element for element in _list]
+
+
+def fix_parameters_of_function(_fun, _args_1_tuple):
     def new_fun(*args_2):
-        return _fun(*args_2, *_args_1)
+        return _fun(*args_2, *_args_1_tuple)
 
     return new_fun
 
@@ -67,23 +66,6 @@ def get_token_names_and_addresses():
     print("Token names:", token_names)
     print("Token addresses:", token_addresses)
     return token_names, token_addresses
-
-
-def get_all_dexes_and_factories(dex_list):
-    routers_and_factories = []
-    for dex_name in dex_list:
-        routers_and_factories.append(get_dex_router_and_factory(dex_name))
-    return routers_and_factories
-
-
-def get_dex_router_and_factory(_dex_name):
-    network_addresses = config["networks"][network.show_active()]
-    dex_addresses = network_addresses["dexes"][_dex_name]
-
-    # Do I need to instantiate them, or would it be enough to just pass the address?
-    router = interface.IUniswapV2Router02(dex_addresses["swap_router_V2_address"])
-    factory = interface.IUniswapV2Factory(dex_addresses["uniswap_factory_address"])
-    return router, factory
 
 
 def get_wallet_balances(account, tokens, verbose=True):

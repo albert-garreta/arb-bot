@@ -1,16 +1,13 @@
 from black import token
 import bot_config
-from scripts.data import get_all_dex_reserves
 from scripts.prices.prices import get_approx_price
 from scripts.utils import (
     get_account,
-    num_digits,
-    get_wallet_balances,
     ensure_amount_of_wrapped_maintoken,
-    get_dex_router_and_factory,
-    LOCAL_BLOCKCHAIN_ENVIRONMENTS,
-    NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS,
+
 )
+from bot_config import LOCAL_BLOCKCHAIN_ENVIRONMENTS,NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS
+from scripts.data_structures.general_data import get_dex_router_and_factory
 from brownie import interface, config, network
 import warnings
 import numpy as np

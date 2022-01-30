@@ -3,19 +3,22 @@ import numpy as np
 import sys, getopt
 from brownie.network.gas.strategies import GasNowStrategy
 from brownie import network, config
-from scripts.utils import (
-    ETH_NETWORKS,
-    FTM_NETWORKS,
-    LOCAL_BLOCKCHAIN_ENVIRONMENTS,
-    NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS,
-)
 import os
 
+NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS = ["development", "ganache"]
+LOCAL_BLOCKCHAIN_ENVIRONMENTS = NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS + [
+    "mainnet-fork",
+    "ftm-main-fork",
+]
+ETH_NETWORKS = ["mainnet", "mainnet-fork", "kovan"]
+FTM_NETWORKS = ["ftm-main", "ftm-main-fork", "ftm-test"]
+MAIN_NETWORKS = ["ftm-main", "mainnet"]
 # TODO: integrate with the config file?
 
 passive_mode = True  # prevents making blockchain transactions
 rebooter_bot = False  # bot reboots automatically in case of an error
 force_actions = False
+
 
 # names and decimals are filled furing preprocessing
 token_names = []
@@ -24,7 +27,7 @@ network_info = config["networks"][network.show_active()]
 dex_names = network_info["dexes"]["names"]
 dex_fees = [network_info["dexes"][name]["fee"] for name in dex_names]  # [0.2, 0.3]
 slippages = [
-    network_info["dexes"][name]["slippage"] for name in dex_names
+    network_info["dexes"][name]["approx_slippage"] for name in dex_names
 ]  # [0.2, 0.3]
 lending_pool_fee = 0.03  # Cream: 0.03. GEIST's and AAVE's: 0.09.
 # NOTE: I am currently estimating slippages as the price % change
@@ -59,9 +62,9 @@ max_value_of_flashloan = 0.995 * ((amount_for_fees) * 100 / lending_pool_fee)
 
 min_profit_ratio = 0.01
 if network.show_active() in FTM_NETWORKS:
-    min_net_profit = 1e18* 1  # WFTM
+    min_net_profit = 1e18 * 1  # WFTM
 elif network.show_active() in ETH_NETWORKS:
-    min_net_profit = 1e18* 0.001
+    min_net_profit = 1e18 * 0.001
 else:
     raise Exception
 
@@ -106,5 +109,6 @@ if (
     network.show_active()
     in LOCAL_BLOCKCHAIN_ENVIRONMENTS + NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS
 ):
-    force_actions = True
-    passive_mode = False
+    # force_actions = True
+    # passive_mode = False
+    pass

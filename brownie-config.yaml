@@ -116,9 +116,6 @@ networks:
     # usdt_address: "0x4cdF39285D7Ca8eB3f090fDA0C069ba5F4145B37" # TSHARE
     lending_pool_addresses_provider_address: "0x6c793c628Fe2b480c5e6FB7957dDa4b9291F9c9b"
     price_feed_address: "0xf4766552D15AE4d256Ad41B6cf2933482B0680dc"
-    dex_names:
-      - "spookyswap"
-      - "spiritswap"
     dexes:
       names:
         - "spookyswap"

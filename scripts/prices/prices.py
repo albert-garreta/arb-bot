@@ -3,62 +3,28 @@ from scripts.utils import (
     print_args_wrapped,
     fix_parameters_of_function,
     reverse_scalar_fun,
+    get_account,
 )
-from scripts.prices.price_utils import *
-import bot_config
 import numpy as np
 from scipy.optimize import minimize_scalar, minimize
-from scripts.data import ArbitrageData
+from copy import deepcopy
+from brownie import network, interface, config
 
 
-def get_arbitrage_data(_reserves):
-    (
-        opt_borrow_amts,
-        net_profits,
-        arb_datas,
-    ) = get_arb_data_in_all_scenarios(_reserves)
-    buying_dex_index = np.argmax(net_profits)
-    arbitrage_data = arb_datas[buying_dex_index]
-    return arbitrage_data
-
-
-def get_arb_data_in_all_scenarios(_reserves):
-    """
-    Check the two combinatios of buying/selling dexes and see with which one
-    we get better net profits
-    Returns:
-        opt_borrow_amts, net_profits, arb_datas"""
-    opt_borrow_amts, net_profits, arb_datas = [], [], []
-    for dex_index, dex_name in enumerate(bot_config.dex_names):
-        arb_data = get_arbitrage_data(dex_index, _reserves)
-        opt_amount_in, net_profit = get_optimal_borrow_amount_and_net_profit(arb_data)
-        opt_borrow_amts.append(opt_amount_in)
-        net_profits.append(net_profit)
-    return opt_borrow_amts, net_profits, arb_datas
-
-
-def get_optimal_borrow_amount_and_net_profit(_arbitrage_data):
+def find_optimal_borrow_amount_and_net_profit(_arbitrage_data, _verbose=True):
     f = fix_parameters_of_function(
-        fun=get_net_profit_v3,
-        params=(
-            # TODO: Allow kwargs in fix_parameters_of_function to shorten this
-            _arbitrage_data._reserves_buying_dex,
-            _arbitrage_data._reserves_selling_dex,
-            _arbitrage_data._fees_buy_dex,
-            _arbitrage_data._fees_sell_dex,
-            _arbitrage_data._slippage_buy_dex,
-            _arbitrage_data._slippage_sell_dex,
-            _arbitrage_data._lending_fee,
-            _arbitrage_data._price_tkn1_to_tkn0,
-        ),
+        _fun=get_net_profit_v3,
+        _args_1_tuple=(_arbitrage_data,),
     )
     _f = reverse_scalar_fun(f)
     res = minimize_scalar(
-        _f, bounds=(0, _arbitrage_data._max_value_of_flashloan), method="bounded"
+        _f, bounds=(0, _arbitrage_data.max_value_of_flashloan), method="bounded"
     )
     optimal_amount = res.x
-    print(f"Optimal initial amount: {optimal_amount}")
-    return optimal_amount, f(optimal_amount)
+    net_profit = f(optimal_amount)
+    print(f"Optimal borrow amount: {optimal_amount/(10**18)}")
+    print(f"Net profit: {net_profit/(10**18)}")
+    return optimal_amount, net_profit
 
 
 def get_net_profit_v3(_amount_tkn1_to_borrow, _arbitrage_data):
@@ -80,6 +46,62 @@ def get_net_profit_v3(_amount_tkn1_to_borrow, _arbitrage_data):
     )
     net_profit = amt_out_tkn0_selling_dex1 - amt_tkn0_to_return_dex0
     return net_profit
+
+
+def get_dex_amount_out(_amount_in, dex_data):
+    return _get_dex_amount_out(
+        _amount_in,
+        dex_data.reserves_in,
+        dex_data.reserves_out,
+        dex_data.fee,
+        dex_data.slippage,
+    )
+
+
+def get_dex_amount_in(_amount_out, dex_data):
+    return _get_dex_amount_in(
+        _amount_out,
+        dex_data.reserves_in,
+        dex_data.reserves_out,
+        dex_data.fee,
+        dex_data.slippage,
+    )
+
+
+# @print_args_wrapped
+def _get_dex_amount_out(_amount_in, _reserve_in, _reserve_out, _dex_fee, _slippage=0):
+    # Function from UniswapV2Library with slippage
+    fee = 1 - _dex_fee / 100
+    numerator = _amount_in * fee * _reserve_out
+    denominator = _reserve_in + fee * _amount_in
+    amount_out = numerator / denominator
+    amount_out = amount_out * (1 - (_slippage / 100))
+    return amount_out
+
+
+def _get_dex_amount_in(_amount_out, _reserve_in, _reserve_out, _dex_fee, _slippage=0):
+    # Function from UniswapV2Library with slippage
+    # TODO: the fee here appears once instead of twice as above. Is this advantageous?
+    fee = 1 - _dex_fee / 100
+    numerator = _amount_out * _reserve_in
+    denominator = _reserve_out + fee * _amount_out
+    amount_out = numerator / denominator
+    amount_out += 1  # this is in UniswapV2Library. Why?
+    amount_out = amount_out * (1 - (_slippage / 100))
+    return amount_out
+
+
+def get_oracle_price(oracle=None, buying=True):
+    if oracle is None:
+        oracle_address = config["networks"][network.show_active()]["price_feed_address"]
+        oracle = interface.AggregatorV3Interface(oracle_address)
+    _, price, _, _, _ = oracle.latestRoundData({"from": get_account()})
+    # TODO: implement correct general decimal formatting. Now assuming 8 decimals
+    price /= 1e8
+    if buying:
+        return 1 / price
+    else:
+        return price
 
 
 # DEPRECATED

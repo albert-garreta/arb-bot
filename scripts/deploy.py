@@ -1,4 +1,5 @@
-from scripts.utils import get_account, get_address, get_all_dexes_and_factories
+from scripts.utils import get_account, get_address
+from scripts.data_structures.general_data import get_all_dexes_and_factories
 from brownie import config, network, Actor
 import bot_config
 
