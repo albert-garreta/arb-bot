@@ -3,12 +3,17 @@ import numpy as np
 import sys, getopt
 from brownie.network.gas.strategies import GasNowStrategy
 from brownie import network, config
-from scripts.utils import ETH_NETWORKS, FTM_NETWORKS
+from scripts.utils import (
+    ETH_NETWORKS,
+    FTM_NETWORKS,
+    LOCAL_BLOCKCHAIN_ENVIRONMENTS,
+    NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS,
+)
 import os
 
 # TODO: integrate with the config file?
 
-debug_mode = False  # prevents executing the function act()
+passive_mode = True  # prevents making blockchain transactions
 rebooter_bot = False  # bot reboots automatically in case of an error
 force_actions = False
 
@@ -18,7 +23,10 @@ decimals = []
 network_info = config["networks"][network.show_active()]
 dex_names = network_info["dexes"]["names"]
 dex_fees = [network_info["dexes"][name]["fee"] for name in dex_names]  # [0.2, 0.3]
-lending_pool_fee = 0.09  # Cream: 0.03. GEIST's and AAVE's: 0.09.
+slippages = [
+    network_info["dexes"][name]["slippage"] for name in dex_names
+]  # [0.2, 0.3]
+lending_pool_fee = 0.03  # Cream: 0.03. GEIST's and AAVE's: 0.09.
 # NOTE: I am currently estimating slippages as the price % change
 # if swapping $10k of value
 approx_slippages = [
@@ -49,11 +57,11 @@ weth_balance_actor_and_caller = 10 * 1e18
 max_value_of_flashloan = 0.995 * ((amount_for_fees) * 100 / lending_pool_fee)
 
 
-min_final_profit_ratio = 0.01
+min_profit_ratio = 0.01
 if network.show_active() in FTM_NETWORKS:
-    min_final_amount_out = 0  # WFTM
+    min_net_profit = 1e18* 1  # WFTM
 elif network.show_active() in ETH_NETWORKS:
-    min_final_amount_out = 0.001
+    min_net_profit = 1e18* 0.001
 else:
     raise Exception
 
@@ -93,3 +101,10 @@ forced_reserves = [
     (8812813628410115267563602, 19738137454139000000000000),
     (38403585201566284827432565, 85967388690746000000000000),
 ]
+
+if (
+    network.show_active()
+    in LOCAL_BLOCKCHAIN_ENVIRONMENTS + NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS
+):
+    force_actions = True
+    passive_mode = False

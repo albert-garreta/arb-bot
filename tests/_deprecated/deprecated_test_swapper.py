@@ -1,5 +1,5 @@
 from scripts.deploy import deploy_swapper
-from scripts.prices import get_pair_price_full
+from scripts.prices.prices import get_pair_price_full
 import bot_config
 from scripts.utils import (
     get_account,

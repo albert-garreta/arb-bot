@@ -10,6 +10,7 @@ LOCAL_BLOCKCHAIN_ENVIRONMENTS = NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS + [
 ]
 ETH_NETWORKS = ["mainnet", "mainnet-fork", "kovan"]
 FTM_NETWORKS = ["ftm-main", "ftm-main-fork", "ftm-test"]
+MAIN_NETWORKS = ["ftm-main", "mainnet"]
 
 
 def print_and_log(msg, path):
@@ -21,6 +22,33 @@ def print_and_log(msg, path):
 
 def num_digits(number: int) -> int:
     return len(str(number))
+
+
+def fix_parameters_of_function(_fun, _args_1):
+    def new_fun(*args_2):
+        return _fun(*args_2, *_args_1)
+
+    return new_fun
+
+
+def reverse_scalar_fun(_fun):
+    def reverse_fun(*args):
+        return -_fun(*args)
+
+    return reverse_fun
+
+
+def rebooter(function):
+    def wrapped_fun(*args, **kwargs):
+        try:
+            return function(*args, **kwargs)
+        except Exception as e:
+            if bot_config.rebooter_bot:
+                return wrapped_fun(*args, **kwargs)
+            else:
+                raise e
+
+    return wrapped_fun
 
 
 def get_address(_name):

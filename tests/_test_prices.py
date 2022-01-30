@@ -1,6 +1,6 @@
 from re import A
-from scripts.prices import (
-    get_dex_ammount_out,
+from scripts.prices.prices import (
+    get_dex_amount_out,
     get_approx_price,
 )
 from scripts.utils import get_token_addresses, FTM_NETWORKS, ETH_NETWORKS
@@ -21,7 +21,7 @@ def test_get_dex_amount_out_and_get_approx_price():
     def inner_fun(
         reserve0, reserve1, amount_in, fee=0.2, slippage=bot_config.approx_slippage
     ):
-        amt_out = get_dex_ammount_out(
+        amt_out = get_dex_amount_out(
             reserve0, reserve1, amount_in, fee, bot_config.approx_slippage
         )
         # Price taking into account the changes of balances in the LP pool

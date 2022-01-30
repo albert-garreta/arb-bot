@@ -3,18 +3,19 @@ from brownie import chain, config, network, interface
 import time, warnings, sys, getopt
 from scripts.deploy import deploy_actor
 from scripts.data import get_all_dex_to_pair_data, get_all_dex_reserves
-from scripts.prices import (
+from scripts.prices.prices import (
     get_approx_price,
-    get_arbitrage_profit_info,
-    get_dex_ammount_out,
+    get_dex_amount_out,
+    get_arbitrage_data,
 )
 from scripts.utils import (
-    ensure_amount_of_wrapped_maintoken,
     get_account,
     get_token_names_and_addresses,
     print_and_log,
+    rebooter,
     LOCAL_BLOCKCHAIN_ENVIRONMENTS,
     NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS,
+    MAIN_NETWORKS,
 )
 from scripts.actor_utils import prepare_actor
 import bot_config
@@ -25,38 +26,9 @@ import warnings
 from brownie.network.gas.strategies import GasNowStrategy, ExponentialScalingStrategy
 
 
-MAIN_NETWORKS = ["ftm-main", "mainnet"]
-
-
-def preprocess(_verbose=True):
-    actor = deploy_actor()
-    # ensure_amount_of_wrapped_maintoken(
-    #     bot_config.weth_balance_actor_and_caller,
-    #     actor,
-    # )
-    all_dex_to_pair_data = get_all_dex_to_pair_data()
-
-    # TODO: same code used in another function in this script.
-    # Refactor code into a function?
-    reserves_all_dexes = get_all_dex_reserves(all_dex_to_pair_data)
-    if not bot_config.debug_mode:
-        actor = prepare_actor(all_dex_to_pair_data, reserves_all_dexes, actor)
-    else:
-        actor = None
-    return all_dex_to_pair_data, actor
-
-
-def rebooter(function):
-    def wrapped_fun(*args, **kwargs):
-        try:
-            return function(*args, **kwargs)
-        except Exception as e:
-            if bot_config.rebooter_bot:
-                return wrapped_fun(*args, **kwargs)
-            else:
-                raise e
-
-    return wrapped_fun
+def main():
+    all_dex_to_pair_data, actor = preprocess()
+    run_bot(all_dex_to_pair_data, actor)
 
 
 @rebooter
@@ -65,251 +37,66 @@ def run_bot(all_dex_to_pair_data, actor):
     The bot runs an epoch every time bot_config["time_between_epoch_due_checks"] are mined.
     This is checked by epoch_due()
     """
-
     block_number = get_latest_block_number()
     last_recorded_time = time.time()
-
     while True:
         if epoch_due(block_number):
-            print(
-                f"Starting epoch after waiting for {time.time() - last_recorded_time}s"
-            )
+            elapsed_time = time.time() - last_recorded_time
             last_recorded_time = time.time()
+            print(f"Starting epoch after waiting `for {elapsed_time}s")
             run_epoch(all_dex_to_pair_data, actor)
         time.sleep(bot_config.time_between_epoch_due_checks)
 
 
-def run_epoch(_all_dex_to_pair_data, _actor):
-    if (
-        network.show_active()
-        in LOCAL_BLOCKCHAIN_ENVIRONMENTS + NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS
-        or bot_config.force_actions
-    ):
-        force_success = True
-    else:
-        force_success = False
-        
-    # NOTE: this is the most expensive call in a run without action.
+def run_epoch(_all_dex_to_pair_data, _actor, _verbose=True):
+    # NOTE: I think this is the most expensive call in an epoch without action.
     _all_reserves = get_all_dex_reserves(_all_dex_to_pair_data)
-    price_tkn1_to_tkn0 = get_approx_price(_all_reserves, _buying=True)
-
-    arb_info = look_for_arbitrage(_all_reserves, price_tkn1_to_tkn0, force_success)
-    if arb_info and not bot_config.debug_mode:
-        action_successful = act(_all_dex_to_pair_data, _all_reserves, arb_info, _actor)
-        if action_successful:
-            _actor = prepare_actor(_all_dex_to_pair_data, _all_reserves, _actor)
-        else:
-            print("Flash loan failed!")
-            process_failure(_all_dex_to_pair_data, _all_reserves, _actor)
+    arb_data = get_arbitrage_data(_all_reserves)
+    passes_arb_requirements = pass_arbitrage_requirements(arb_data)
+    if _verbose:
+        arb_data.print_summary()
+    if passes_arb_requirements:
+        act(arb_data, _actor)
 
 
-def look_for_arbitrage(_reserves_all_dexes, _price_tkn1_to_tkn0, _force_success=False):
-    # The force_sucess argument is used for testing purposes
-    (
-        final_profit_ratio,
-        optimal_amount_in,
-        final_amount_out,
-        buying_dex_index,
-        selling_dex_index,
-    ) = get_arbitrage_profit_info(
-        _reserves_all_dexes,
-        _price_tkn1_to_tkn0,
-        bot_config.dex_fees,
-        bot_config.approx_slippages,
-        bot_config.lending_pool_fee,
-        _verbose=True,
+def pass_arbitrage_requirements(_arbitrage_data):
+    net_profit = _arbitrage_data.net_profit
+    profit_ratio = _arbitrage_data.get_profit_ratio()
+    requirement = profit_ratio > bot_config.min_profit_ratio
+    requirement = requirement and net_profit > bot_config.min_net_profit
+    requirement = requirement or bot_config.force_actions
+    requirement = requirement and (not bot_config.passive_mode)
+    return requirement
+
+
+def flashloan_and_swap(_arb_data, _actor):
+    tx = _actor.requestFlashLoanAndAct(
+        token_addresses,
+        _arb_data.optimal_borrow_amt,
+        _arb_data.buy_dex_index,
+        _arb_data.sell_dex_index,
+        {
+            "from": get_account(),
+            # "gas_price": bot_config.gas_strategy,
+            # "gas_limit": bot_config.gas_limit,
+        },
     )
-    if (
-        final_profit_ratio > bot_config.min_final_profit_ratio
-        and final_amount_out / (10 ** bot_config.decimals[0])
-        > bot_config.min_final_amount_out
-    ) or _force_success:
-        msg = f"ACT\n"
-        msg += f"Reserves buying dex: {_reserves_all_dexes[buying_dex_index]}\n"
-        msg += f"Reserves selling dex: {_reserves_all_dexes[selling_dex_index]}\n"
-        msg += f"Profit ratio {final_profit_ratio}.\n"
-        msg += f"Optimal amount in {optimal_amount_in/(10**bot_config.decimals[0])}\n"
-        msg += f"Gains (in token0) {final_amount_out/(10**bot_config.decimals[0])}\n\n"
-
-        print_and_log(msg, bot_config.log_searches_path)
-        tkn0_to_buy = 0.5 * optimal_amount_in
-        tkn1_to_sell = 0.5 * optimal_amount_in / _price_tkn1_to_tkn0
-
-        return (  # TODO: create structure for this data
-            final_profit_ratio,
-            tkn0_to_buy,
-            tkn1_to_sell,
-            final_amount_out,
-            buying_dex_index,
-            selling_dex_index,
-        )
-
-    else:
-        return None
+    tx.wait(1)
 
 
-def act(_all_dex_to_pair_data, _all_reserves, arb_info, _actor, _verbose=True):
-    token0, name0, decimals0 = _all_dex_to_pair_data["token_data"][
-        bot_config.token_names[0]
-    ]
-    token1, name1, decimals1 = _all_dex_to_pair_data["token_data"][
-        bot_config.token_names[1]
-    ]
-
-    (
-        final_profit_ratio,
-        tkn0_to_buy,
-        tkn1_to_sell,
-        final_amount_out,
-        buying_dex_index,
-        selling_dex_index,
-    ) = arb_info
-
-    # fix decimals, right now all token denominations are in wei
-    tkn0_to_buy /= 10 ** (18 - decimals0)
-    tkn1_to_sell /= 10 ** (18 - decimals1)
-    print(tkn0_to_buy, tkn1_to_sell)
-
-    # TODO: when creating a data structure, make it so that decimals are returned in a list,
-    # same with tokens, names, etc
-    decimals = [decimals0, decimals1]
-    amts = [tkn0_to_buy, tkn1_to_sell]
-    tokens = [token0, token1]
-    token_names, token_addresses = get_token_names_and_addresses()
-
-    account = get_account()
-
-    # TODO: make this into a function
-    actor_pre_loan_balance = [
-        tkn.balanceOf(_actor.address) / (10 ** decimal)
-        for tkn, decimal in zip(tokens, decimals)
-    ]
-    caller_pre_loan_balance = [
-        tkn.balanceOf(account) / (10 ** decimal)
-        for tkn, decimal in zip(tokens, decimals)
-    ]
-
-    amts_to_borrow = [amt / (10 ** decimal) for amt, decimal in zip(amts, decimals)]
-    fees_to_be_paid = [
-        0.01 * bot_config.lending_pool_fee * amt / (10 ** decimal)
-        for amt, decimal in zip(amts, decimals)
-    ]
-    total_to_be_returned = [
-        fees_to_be_paid[i] + amts_to_borrow[i] for i in range(len(tokens))
-    ]
-
-    capacity_to_return = [
-        actor_pre_loan_balance[0]
-        + (
-            get_dex_ammount_out(
-                _all_reserves[selling_dex_index][1],
-                _all_reserves[selling_dex_index][0],
-                amts_to_borrow[1] * 10 ** 18,
-                bot_config.dex_fees[selling_dex_index],
-            )
-            / (10 ** 18)
-        ),
-        actor_pre_loan_balance[1]
-        + (
-            get_dex_ammount_out(
-                _all_reserves[buying_dex_index][0],
-                _all_reserves[buying_dex_index][1],
-                amts_to_borrow[0] * 10 ** 18,
-                bot_config.dex_fees[buying_dex_index],
-            )
-            / (10 ** 18)
-        ),
-    ]
-    return_deltas = [
-        capacity_to_return[i] - total_to_be_returned[i] for i in range(len(tokens))
-    ]
-    msg = ""
-    msg += "Requesting flash loan and swapping...\n"
-    msg += f"Expected net value gain (in token0): {final_amount_out*(10**(18-decimals[0]))}\n"
-    msg += f"Requesting to borrow the following ammounts: \n"
-    msg += f"{amts_to_borrow}\n"
-    msg += f"Fees to be paid: \n"
-    msg += f"{fees_to_be_paid}\n"
-    msg += f"Total to be returned: {total_to_be_returned}\n"
-    msg += f"Capacity to return: {capacity_to_return}\n"
-    msg += f"Return deltas: {return_deltas}\n"
-    msg += f"Buying dex index: {buying_dex_index}\n"
-    msg += f"Selling dex index: {selling_dex_index}\n"
-    msg += f"Actor pre-loan balances: {actor_pre_loan_balance}\n"
-    msg += f"Caller pre-loan balances: " f"{caller_pre_loan_balance}\n\n"
-    if any([delta < 0 for delta in return_deltas]):
-        error_msg = "Some token needs to be returned by an \
-                     amount larger than what can be returned\n\n"
-        msg += error_msg
-        print_and_log(msg, bot_config.log_actions_path)
-        # raise ValueError(msg)
-
-    print_and_log(msg, bot_config.log_actions_path)
-
-    msg = ""
-    price_tkn0_to_tkn1 = get_approx_price(
-        _all_reserves, buying=False
-    )
+def act(_arb_data, _actor, _verbose):
+    print_and_log_action_info("pre_action", _verbose)
     try:
-        # if True:
-        tx = _actor.requestFlashLoanAndAct(
-            token_addresses,
-            [tkn0_to_buy, tkn1_to_sell],
-            buying_dex_index,
-            selling_dex_index,
-            price_tkn0_to_tkn1,
-            {
-                "from": account,
-                # "gas_price": bot_config.gas_strategy,
-                # "gas_limit": bot_config.gas_limit,
-            },
-        )
-        tx.wait(1)
-        actor_post_loan_balance = [
-            tkn.balanceOf(_actor.address) / (10 ** decimal)
-            for tkn, decimal in zip(tokens, decimals)
-        ]
-        caller_post_loan_balance = [
-            tkn.balanceOf(account) / (10 ** decimal)
-            for tkn, decimal in zip(tokens, decimals)
-        ]
-        amounts_flashloaned = [
-            _actor.amountsLoanReceived(idx) / 10 ** decimals[idx]
-            for idx in range(len(tokens))
-        ]
-        final_net_profits = [
-            (
-                caller_post_loan_balance[idx]
-                - caller_pre_loan_balance[idx]
-                - actor_pre_loan_balance[idx]
-            )
-            for idx in range(len(tokens))
-        ]
-
-        msg += "Success!"
-        msg += f"Actor post-loan balances: {actor_post_loan_balance}\n"
-        msg += f"Caller post-loan balances: " f"{caller_post_loan_balance}\n"
-        msg += (
-            f"Amount of loans received during the flash loan: "
-            f"{amounts_flashloaned}\n"
-        )
-        msg += f"Final net profits: {final_net_profits}\n\n"
-        # assert pre_loan_balance == initial_deposit
-        print_and_log(msg, bot_config.log_actions_path)
-
-        assert False
-        return True
+        flashloan_and_swap(_arb_data, _actor)
+        print_and_log_action_info("post_action", _verbose)
     except Exception as e:
-        msg += "Operation failed\n"
-        msg += f"The exception is {e}\n\n"
-        print_and_log(msg, bot_config.log_actions_path)
-
-        return False
+        process_failure(e)
 
 
-def process_failure(_all_dex_to_pair_data, _all_reserves, _actor):
-    # TODO: What else do we need to do here?
-    prepare_actor(_all_dex_to_pair_data, _all_reserves, _actor)
+def process_failure(_exception):
+    msg = "Operation failed\n"
+    msg += f"The exception is {_exception}\n\n"
+    print_and_log(msg, bot_config.log_actions_path)
 
 
 def epoch_due(block_number):
@@ -356,7 +143,154 @@ def get_latest_block_number():
         return e
 
 
-def main():
+def preprocess(_verbose=True):
+    actor = deploy_actor()
+    all_dex_to_pair_data = get_all_dex_to_pair_data()
 
-    all_dex_to_pair_data, actor = preprocess()
-    run_bot(all_dex_to_pair_data, actor)
+    # TODO: same code used in another function in this script.
+    # Refactor code into a function?
+    reserves_all_dexes = get_all_dex_reserves(all_dex_to_pair_data)
+    if not bot_config.passive_mode:
+        actor = prepare_actor(all_dex_to_pair_data, reserves_all_dexes, actor)
+    else:
+        actor = None
+    return all_dex_to_pair_data, actor
+
+
+def print_and_log_action_info(stage, _verbose):
+    if _verbose:
+        pass
+
+    token0 = _arb_data.token0
+    token1 = _arb_data.token1
+    decimals0 = _arb_data.decimals0
+    decimals1 = _arb_data.decimals1
+    (
+        final_profit_ratio,
+        tkn0_to_buy,
+        tkn1_to_sell,
+        final_amount_out,
+        buying_dex_index,
+        selling_dex_index,
+    ) = arb_info
+
+    # fix decimals, right now all token denominations are in wei
+    tkn0_to_buy /= 10 ** (18 - decimals0)
+    tkn1_to_sell /= 10 ** (18 - decimals1)
+    print(tkn0_to_buy, tkn1_to_sell)
+
+    # TODO: when creating a data structure, make it so that decimals are returned in a list,
+    # same with tokens, names, etc
+    decimals = [decimals0, decimals1]
+    amts = [tkn0_to_buy, tkn1_to_sell]
+    tokens = [token0, token1]
+    token_names, token_addresses = get_token_names_and_addresses()
+
+    account = get_account()
+
+    # TODO: make this into a function
+    actor_pre_loan_balance = [
+        tkn.balanceOf(_actor.address) / (10 ** decimal)
+        for tkn, decimal in zip(tokens, decimals)
+    ]
+    caller_pre_loan_balance = [
+        tkn.balanceOf(account) / (10 ** decimal)
+        for tkn, decimal in zip(tokens, decimals)
+    ]
+
+    amts_to_borrow = [amt / (10 ** decimal) for amt, decimal in zip(amts, decimals)]
+    fees_to_be_paid = [
+        0.01 * bot_config.lending_pool_fee * amt / (10 ** decimal)
+        for amt, decimal in zip(amts, decimals)
+    ]
+    total_to_be_returned = [
+        fees_to_be_paid[i] + amts_to_borrow[i] for i in range(len(tokens))
+    ]
+
+    capacity_to_return = [
+        actor_pre_loan_balance[0]
+        + (
+            get_dex_amount_out(
+                _all_reserves[selling_dex_index][1],
+                _all_reserves[selling_dex_index][0],
+                amts_to_borrow[1] * 10 ** 18,
+                bot_config.dex_fees[selling_dex_index],
+            )
+            / (10 ** 18)
+        ),
+        actor_pre_loan_balance[1]
+        + (
+            get_dex_amount_out(
+                _all_reserves[buying_dex_index][0],
+                _all_reserves[buying_dex_index][1],
+                amts_to_borrow[0] * 10 ** 18,
+                bot_config.dex_fees[buying_dex_index],
+            )
+            / (10 ** 18)
+        ),
+    ]
+    return_deltas = [
+        capacity_to_return[i] - total_to_be_returned[i] for i in range(len(tokens))
+    ]
+    msg = ""
+    msg += "Requesting flash loan and swapping...\n"
+    msg += f"Expected net value gain (in token0): {final_amount_out*(10**(18-decimals[0]))}\n"
+    msg += f"Requesting to borrow the following ammounts: \n"
+    msg += f"{amts_to_borrow}\n"
+    msg += f"Fees to be paid: \n"
+    msg += f"{fees_to_be_paid}\n"
+    msg += f"Total to be returned: {total_to_be_returned}\n"
+    msg += f"Capacity to return: {capacity_to_return}\n"
+    msg += f"Return deltas: {return_deltas}\n"
+    msg += f"Buying dex index: {buying_dex_index}\n"
+    msg += f"Selling dex index: {selling_dex_index}\n"
+    msg += f"Actor pre-loan balances: {actor_pre_loan_balance}\n"
+    msg += f"Caller pre-loan balances: " f"{caller_pre_loan_balance}\n\n"
+    if any([delta < 0 for delta in return_deltas]):
+        error_msg = "Some token needs to be returned by an \
+                     amount larger than what can be returned\n\n"
+        msg += error_msg
+        print_and_log(msg, bot_config.log_actions_path)
+        # raise ValueError(msg)
+
+    print_and_log(msg, bot_config.log_actions_path)
+
+    msg = ""
+    price_tkn0_to_tkn1 = get_approx_price(_all_reserves, buying=False)
+    try:
+
+        actor_post_loan_balance = [
+            tkn.balanceOf(_actor.address) / (10 ** decimal)
+            for tkn, decimal in zip(tokens, decimals)
+        ]
+        caller_post_loan_balance = [
+            tkn.balanceOf(account) / (10 ** decimal)
+            for tkn, decimal in zip(tokens, decimals)
+        ]
+        amounts_flashloaned = [
+            _actor.amountsLoanReceived(idx) / 10 ** decimals[idx]
+            for idx in range(len(tokens))
+        ]
+        final_net_profits = [
+            (
+                caller_post_loan_balance[idx]
+                - caller_pre_loan_balance[idx]
+                - actor_pre_loan_balance[idx]
+            )
+            for idx in range(len(tokens))
+        ]
+
+        msg += "Success!"
+        msg += f"Actor post-loan balances: {actor_post_loan_balance}\n"
+        msg += f"Caller post-loan balances: " f"{caller_post_loan_balance}\n"
+        msg += (
+            f"Amount of loans received during the flash loan: "
+            f"{amounts_flashloaned}\n"
+        )
+        msg += f"Final net profits: {final_net_profits}\n\n"
+        # assert pre_loan_balance == initial_deposit
+        print_and_log(msg, bot_config.log_actions_path)
+
+        return True
+    except:
+        pass

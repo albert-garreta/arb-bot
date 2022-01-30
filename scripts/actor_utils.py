@@ -1,7 +1,16 @@
 from black import token
 import bot_config
-from scripts.prices import get_approx_price
-from scripts.utils import get_account, num_digits, get_wallet_balances
+from scripts.data import get_all_dex_reserves
+from scripts.prices.prices import get_approx_price
+from scripts.utils import (
+    get_account,
+    num_digits,
+    get_wallet_balances,
+    ensure_amount_of_wrapped_maintoken,
+    get_dex_router_and_factory,
+    LOCAL_BLOCKCHAIN_ENVIRONMENTS,
+    NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS,
+)
 from brownie import interface, config, network
 import warnings
 import numpy as np
@@ -16,6 +25,15 @@ def prepare_actor(_all_dex_to_pair_data, _all_reserves, _actor):
     """Preliminary steps to the flashloan request and actions which can be done beforehand"""
     print("Preparing actor for a future flashloan...")
 
+    if (
+        network.show_active()
+        in LOCAL_BLOCKCHAIN_ENVIRONMENTS + NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS
+    ):
+        ensure_amount_of_wrapped_maintoken(
+            bot_config.weth_balance_actor_and_caller,
+            _actor,
+        )
+
     token0, name0, decimals0 = _all_dex_to_pair_data["token_data"][
         bot_config.token_names[0]
     ]
@@ -24,15 +42,13 @@ def prepare_actor(_all_dex_to_pair_data, _all_reserves, _actor):
     ]
 
     required_balance_token0 = bot_config.amount_for_fees_tkn0 + 1000000
-    adjust_actor_balance(_actor, token0, name0, decimals0, required_balance_token0)
+    adjust_actor_balance(
+        _actor, token0, name0, decimals0, required_balance_token0, _all_reserves
+    )
     required_balance_token1 = bot_config.amount_for_fees_tkn1_in_tkn0
 
     adjust_actor_balance(
-        _actor,
-        token1,
-        name1,
-        decimals1,
-        required_balance_token1,
+        _actor, token1, name1, decimals1, required_balance_token1, _all_reserves
     )
 
     # TODO: Do I need to return the actor here?
@@ -46,6 +62,7 @@ def adjust_actor_balance(
     _name: str,
     _decimals: int,
     _required_balance: int,  # in wei
+    _all_reserves,
 ) -> None:
     account = get_account()
     # We need to adjust the decimals here
@@ -77,7 +94,35 @@ def adjust_actor_balance(
             tx.wait(1)
             print("Transfered")
         else:
-            raise Exception(f"Caller has not enough {_name}")
+            # TODO:
+            # So far we only allow to do this if we are testing
+            # And we assume that token0 is the wrapped main token
+            if (
+                network.show_active()
+                not in LOCAL_BLOCKCHAIN_ENVIRONMENTS
+                + NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS
+            ):
+                raise Exception(f"Caller has not enough {_name}")
+            assert (
+                _name == bot_config.token_names[1]
+            ), f"Token {_name} to be swapped should be {bot_config.token_names[1]}"
+
+            weth = interface.IWeth(
+                config["networks"][network.show_active()]["token_addresses"][
+                    "wrapped_main_token_address"
+                ]
+            )
+            price_tkn0_to_tkn1 = get_approx_price(_all_reserves, _buying=False)
+            max_amount_in = amount_missing / price_tkn0_to_tkn1 + 1e18
+            swap_tokens_for_exact_tokens(
+                weth.address,
+                _token.address,
+                amount_missing,
+                max_amount_in,
+                _name,
+                account,
+                _actor,
+            )
 
 
 def swap_tokens_for_exact_tokens(
@@ -94,13 +139,20 @@ def swap_tokens_for_exact_tokens(
         f"for {_amount_out} {_name} (tokens for exact tokens)"
     )
 
+    router, factory = get_dex_router_and_factory(bot_config.dex_names[0])
+
+    tx = interface.IERC20(_token_in_address).approve(
+        router.address, _max_amount_in, {"from": get_account()}
+    )
+    tx.wait(1)
+
     # function swapTokensForExactTokens(
     # address _tokenInAddress,
     # address _tokenOutAddress,
     # uint256 _amountOut,
     # uint256 _minAmountOut,
     # uint256 _dexIndex
-    tx = _actor.swapTokensForExactTokens(
+    tx = router.swapTokensForExactTokens(
         _token_in_address,
         _token_out_address,
         _amount_out,
