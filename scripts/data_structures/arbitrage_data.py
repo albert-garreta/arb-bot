@@ -2,7 +2,7 @@ from socket import MSG_EOR
 import bot_config
 from scripts.data_structures.general_data import GeneralData
 from scripts.data_structures.dotdict import dotdict
-from scripts.prices.prices import find_optimal_borrow_amount_and_net_profit
+from scripts.prices import find_optimal_borrow_amount_and_net_profit
 from scripts.utils import log, mult_list_by_scalar
 import numpy as np
 

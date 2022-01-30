@@ -2,13 +2,7 @@ from distutils import file_util
 import seaborn as sbn
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
-from scripts.prices.prices import (
-    get_dex_amount_out,
-    get_optimal_amounts,
-    get_optimal_amount_in_2,
-    get_net_profit2_functional,
-    get_net_profit_v3,
-)
+from scripts.prices import get_net_profit_v3
 from scripts.data_structures.arbitrage_data import ArbitrageData
 import bot_config
 import random
@@ -51,8 +45,8 @@ RESERVE00, RESERVE10 = (42674423402917740499711141, 88918120395739000000000000)
 RESERVE01, RESERVE11 = [41992995.7626512, 87488447.455042]
 RESERVE00, RESERVE10 = [11541179.030419603, 24067739.750079002]
 
-# RESERVE01, RESERVE11 = [42033065.39828595,  87383634.83551401]
-# RESERVE00, RESERVE10 = [11536786.090149844, 24026265.452085003]
+RESERVE01, RESERVE11 = [42033065.39828595, 87383634.83551401]
+RESERVE00, RESERVE10 = [11536786.090149844, 24026265.452085003]
 
 
 def plot_final_profits():
@@ -62,13 +56,11 @@ def plot_final_profits():
     amount_in_rndn = random.choices(range(-100, 100, scale), k=number_points)
     amounts_out = []
     arb_data = ArbitrageData()
-    arb_data.update_given_buy_dex_and_reserves(
-        _buy_dex_index=0,
-        _reserves=[
-            mult_list_by_scalar([RESERVE01, RESERVE11], 1e18),
-            mult_list_by_scalar([RESERVE00, RESERVE10], 1e18),
-        ],
-    )
+    arb_data.reserves = [
+        mult_list_by_scalar([RESERVE01, RESERVE11], 1e18),
+        mult_list_by_scalar([RESERVE00, RESERVE10], 1e18),
+    ]
+    arb_data.update_given_buy_dex(_buy_dex_index=1)
 
     f = fix_parameters_of_function(get_net_profit_v3, (arb_data,))
 

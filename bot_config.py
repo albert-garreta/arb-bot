@@ -18,7 +18,7 @@ MAIN_NETWORKS = ["ftm-main", "mainnet"]
 passive_mode = True  # prevents making blockchain transactions
 rebooter_bot = False  # bot reboots automatically in case of an error
 force_actions = False
-
+verbose = True
 
 # names and decimals are filled furing preprocessing
 token_names = []

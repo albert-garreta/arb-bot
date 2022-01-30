@@ -1,5 +1,5 @@
 from re import A
-from scripts.prices.prices import (
+from scripts.prices import (
     get_dex_amount_out,
     get_approx_price,
 )

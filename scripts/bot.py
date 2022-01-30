@@ -2,8 +2,7 @@ from tkinter import E
 from brownie import chain
 import time, warnings, sys, getopt
 from scripts.deploy import deploy_actor
-from scripts.data_structures.data import get_all_dex_reserves, update_arbitrage_data
-from scripts.prices.prices import (
+from scripts.prices import (
     get_approx_price,
     get_dex_amount_out,
 )
@@ -29,61 +28,63 @@ from brownie.network.gas.strategies import GasNowStrategy, ExponentialScalingStr
 
 
 def main():
-    arb_data, actor = preprocess()
-    run_bot(arb_data, actor)
+    Bot().run()
 
 
-@rebooter
-def run_bot(_arbitrage_data, _actor):
-    """
-    The bot runs an epoch every time bot_config["time_between_epoch_due_checks"] are mined.
-    This is checked by epoch_due()
-    """
-    block_number = get_latest_block_number()
-    last_recorded_time = time.time()
-    while True:
-        if epoch_due(block_number):
-            elapsed_time = time.time() - last_recorded_time
-            last_recorded_time = time.time()
-            print(f"Starting epoch after waiting for {elapsed_time}s")
-            run_epoch(_arbitrage_data, _actor)
-        time.sleep(bot_config.time_between_epoch_due_checks)
+class Bot(object):
+    def __init__(self):
+        self.actor_smartcontract = deploy_actor()
+        self.arb_data = ArbitrageData()
+        if not bot_config.passive_mode:
+            self.prepare_actor_smartcontract()
 
+    @rebooter
+    def run(self):
+        """
+        The bot runs an epoch every time bot_config["time_between_epoch_due_checks"] are mined.
+        This is checked by epoch_due()
+        """
+        block_number = get_latest_block_number()
+        last_recorded_time = time.time()
+        while True:
+            if epoch_due(block_number):
+                elapsed_time = time.time() - last_recorded_time
+                last_recorded_time = time.time()
+                print(f"Starting epoch after waiting for {elapsed_time}s")
+                self.run_epoch()
+            time.sleep(bot_config.time_between_epoch_due_checks)
 
-def run_epoch(_arbitrage_data, _actor, _verbose=True):
-    _arbitrage_data.update_to_best_possible()
-    if _verbose:
-        _arbitrage_data.print_summary()
-    if _arbitrage_data.passes_requirements():
-        _arbitrage_data.log_summary(bot_config.log_searches_path)
-        act(_arbitrage_data, _actor)
+    def run_epoch(self):
+        self.arb_data.update_to_best_possible()
+        if bot_config.verbose:
+            self.arb_data.print_summary()
+        if self.arb_data.passes_requirements():
+            self.arb_data.log_summary(bot_config.log_searches_path)
+            self.act()
 
+    def act(self):
+        if bot_config.passive_mode:
+            return None
+        print_and_log_action_info("pre_action")
+        try:
+            self.flashloan_and_swap()
+            print_and_log_action_info(self.arb_data, "post_action")
+        except Exception as e:
+            process_failure(e)
 
-def act(_arb_data, _actor, _verbose=True):
-    if bot_config.passive_mode:
-        return None
-
-    print_and_log_action_info("pre_action", _verbose)
-    try:
-        flashloan_and_swap(_arb_data, _actor)
-        print_and_log_action_info(_arb_data, "post_action", _verbose)
-    except Exception as e:
-        process_failure(e)
-
-
-def flashloan_and_swap(_arb_data, _actor):
-    tx = _actor.requestFlashLoanAndAct(
-        _arb_data.token_addresses,
-        _arb_data.optimal_borrow_amt,
-        _arb_data.buy_dex_index,
-        _arb_data.sell_dex_index,
-        {
-            "from": get_account(),
-            # "gas_price": bot_config.gas_strategy,
-            # "gas_limit": bot_config.gas_limit,
-        },
-    )
-    tx.wait(1)
+    def flashloan_and_swap(self):
+        tx = self.actor_smartcontract.requestFlashLoanAndAct(
+            self.arb_data.token_addresses,
+            self.arb_data.optimal_borrow_amt,
+            self.arb_data.buy_dex_index,
+            self.arb_data.sell_dex_index,
+            {
+                "from": get_account(),
+                # "gas_price": bot_config.gas_strategy,
+                # "gas_limit": bot_config.gas_limit,
+            },
+        )
+        tx.wait(1)
 
 
 def process_failure(_exception):
@@ -134,20 +135,6 @@ def get_latest_block_number():
         return latest_block_number
     except Exception as e:
         return e
-
-
-def preprocess(_verbose=True):
-    actor = deploy_actor()
-    arbitrage_data = ArbitrageData()
-
-    # TODO: same code used in another function in this script.
-    # Refactor code into a function?
-    reserves_all_dexes = get_all_dex_reserves(arbitrage_data)
-    if not bot_config.passive_mode:
-        actor = prepare_actor(arbitrage_data, reserves_all_dexes, actor)
-    else:
-        actor = None
-    return arbitrage_data, actor
 
 
 def print_and_log_action_info(_arbitrage_data, _arb_info, _stage, _verbose):
