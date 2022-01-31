@@ -3,7 +3,7 @@ import bot_config
 from scripts.data_structures.general_data import GeneralData
 from scripts.data_structures.dotdict import dotdict
 from scripts.prices import find_optimal_borrow_amount_and_net_profit
-from scripts.utils import log, mult_list_by_scalar
+from scripts.utils import log, mult_list_by_scalar, get_account
 import numpy as np
 
 
@@ -29,8 +29,8 @@ class ArbitrageData(GeneralData):
         self.fees_sell_dex = self.dex_fees[sell_dex_index]
         self.slippage_buy_dex = self.dex_slippages[_buy_dex_index]
         self.slippage_sell_dex = self.dex_slippages[sell_dex_index]
-        self.reserves_buying_dex = self.reserves[self.buy_dex_index]
-        self.reserves_selling_dex = self.reserves[self.sell_dex_index]
+        self.reserves_buying_dex = self.reserves[_buy_dex_index]
+        self.reserves_selling_dex = self.reserves[sell_dex_index]
 
     def get_sell_dex_index(self, _buy_dex_index):
         return (_buy_dex_index + 1) % 2
@@ -83,25 +83,6 @@ class ArbitrageData(GeneralData):
     def get_dex_price(self, _reserves):
         return _reserves[0] / _reserves[1]
 
-    def get_summary_message(self):
-        msg = ""
-        msg += f"Reserves buying dex: {mult_list_by_scalar(self.reserves_buying_dex,1e-18)}\n"
-        msg += f"Reserves selling dex: {mult_list_by_scalar(self.reserves_selling_dex,1e-18)}\n"
-        msg += f"Price buying dex: {self.get_dex_price(self.reserves_buying_dex)}\n"
-        msg += f"Price selling dex: {self.get_dex_price(self.reserves_selling_dex)}\n"
-        msg += f"Buying dex index: {self.buy_dex_index}\n"
-        msg += f"Net profit: {self.net_profit/1e18}\n"
-        msg += f"Optimal borrow amount: {self.optimal_borrow_amount/1e18}\n"
-        # msg += f"Profit ratio: {self.get_profit_ratio()}\n"
-        self.summary_message = msg
-
-    def print_summary(self):
-        self.get_summary_message()
-        print(self.summary_message)
-
-    def log_summary(self, path):
-        log(self.summary_message, path)
-
     def update_to_best_possible(self):
         """
         Check the two combinatios of buying/selling dexes and see with which one
@@ -138,3 +119,27 @@ class ArbitrageData(GeneralData):
         borrow_amount = _best_metrics["borrow_amount"]
         self.update_given_buy_dex(buy_dex_index)
         self.update_optimal_borrow_amount_and_net_profit(borrow_amount, net_profit)
+
+
+    def set_summary_message(self, addendum=""):
+        # TODO: create separate class for logging
+        msg = ""
+        msg += f"Reserves buying dex: {mult_list_by_scalar(self.reserves_buying_dex,1e-18)}\n"
+        msg += f"Reserves selling dex: {mult_list_by_scalar(self.reserves_selling_dex,1e-18)}\n"
+        msg += f"Price buying dex: {self.get_dex_price(self.reserves_buying_dex)}\n"
+        msg += f"Price selling dex: {self.get_dex_price(self.reserves_selling_dex)}\n"
+        msg += f"Buying dex index: {self.buy_dex_index}\n"
+        msg += f"Net profit: {self.net_profit/1e18}\n"
+        msg += f"Optimal borrow amount: {self.optimal_borrow_amount/1e18}\n"
+        msg += addendum
+        self.summary_message = msg
+
+    def print_summary(self):
+        print(self.summary_message)
+
+    def log_summary(self, path):
+        log(self.summary_message, path)
+
+    def print_and_log_summary(self, path):
+        self.print_summary()
+        self.log_summary(path)

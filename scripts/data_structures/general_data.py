@@ -71,7 +71,7 @@ class GeneralData(dotdict):
 
     def update_all_dexes_reserves(self) -> tuple[tuple[int, int]]:
         if bot_config.force_actions:
-            return bot_config.forced_reserves
+            self.reserves = bot_config.forced_reserves
         else:
             self.reserves = [
                 self.get_dex_reserves(dex_index)

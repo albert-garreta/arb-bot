@@ -6,3 +6,4 @@ build/
 reports/
 contracts/aave-protocol-V2
 contracts/uniswap-v3
+logs/

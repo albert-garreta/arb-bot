@@ -15,7 +15,7 @@ FTM_NETWORKS = ["ftm-main", "ftm-main-fork", "ftm-test"]
 MAIN_NETWORKS = ["ftm-main", "mainnet"]
 # TODO: integrate with the config file?
 
-passive_mode = True  # prevents making blockchain transactions
+passive_mode = True # prevents making blockchain transactions
 rebooter_bot = False  # bot reboots automatically in case of an error
 force_actions = False
 verbose = True
@@ -109,6 +109,6 @@ if (
     network.show_active()
     in LOCAL_BLOCKCHAIN_ENVIRONMENTS + NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS
 ):
-    # force_actions = True
-    # passive_mode = False
+    force_actions = True
+    passive_mode = False
     pass
