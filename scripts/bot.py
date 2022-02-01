@@ -1,7 +1,7 @@
 from tkinter import E
 from brownie import chain
 import time, warnings, sys, getopt
-from scripts.deploy import deploy_actor
+from scripts.deploy import get_actor_V2
 from scripts.prices import (
     get_approx_price,
     get_dex_amount_out,
@@ -9,6 +9,7 @@ from scripts.prices import (
 from scripts.utils import (
     get_account,
     get_token_names_and_addresses,
+    get_wallet_balances,
     log,
     rebooter,
     mult_list_by_scalar,
@@ -34,7 +35,7 @@ def main():
 
 class Bot(object):
     def __init__(self):
-        self.actor_smartcontract = deploy_actor()
+        self.actor_smartcontract = get_actor_V2()
         self.arb_data = ArbitrageData()
         # if not bot_config.passive_mode:
         #    self.prepare_actor_smartcontract()
@@ -61,24 +62,47 @@ class Bot(object):
         self.arb_data.print_summary()
         if self.arb_data.passes_requirements():
             self.arb_data.log_summary(bot_config.log_searches_path)
-            self.act()
+            return self.act()
 
     def act(self):
         if bot_config.passive_mode:
             return None
         self.log_pre_action()
         try:
-            self.flashloan_and_swap()
+            tx = self.flashloan_and_swap()
             self.log_post_action()
+            return tx
         except Exception as e:
             self.log_failure(e)
 
     def flashloan_and_swap(self):
-        tx = self.actor_smartcontract.requestFlashLoanAndAct(
+        flashloan_args = (
             self.arb_data.token_addresses,
-            self.arb_data.optimal_borrow_amt,
+            # TODO: clean this up
+            self.arb_data.optimal_borrow_amount
+            / 10
+            ** (
+                18 - self.arb_data.decimals[1]
+            ),  # Important: we must pass amounts in the native decimal number of the tokens
+            self.arb_data.amount_to_return / 10 ** (18 - self.arb_data.decimals[0]),
             self.arb_data.buy_dex_index,
             self.arb_data.sell_dex_index,
+            self.arb_data.reversed_orders,
+            (1000 - 10 * self.arb_data.dex_fees[self.arb_data.buy_dex_index]),
+        )
+        print(flashloan_args)
+        print(self.actor_smartcontract.pairs(0))
+        print(self.actor_smartcontract.pairs(1))
+        print(get_wallet_balances(get_account(), self.arb_data.tokens))
+
+        # if self.arb_data.reversed_orders[self.arb_data.buy_dex_index]:
+        #     switch_order(self.arb_data.tokens)
+        #     switch_order(self.arb_data.decimals)
+        #     switch_order(self.arb_data.reserves[self.arb_data.buy_dex_index])
+        #     switch_order(self.arb_data.token_addresses)
+
+        tx = self.actor_smartcontract.requestFlashLoanAndAct(
+            flashloan_args,
             {
                 "from": get_account(),
                 # "gas_price": bot_config.gas_strategy,
@@ -86,6 +110,7 @@ class Bot(object):
             },
         )
         tx.wait(1)
+        return tx
 
     def get_balances(self, address):
         return [

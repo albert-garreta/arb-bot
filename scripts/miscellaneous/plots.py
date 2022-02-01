@@ -48,6 +48,8 @@ RESERVE00, RESERVE10 = [11541179.030419603, 24067739.750079002]
 RESERVE01, RESERVE11 = [42033065.39828595, 87383634.83551401]
 RESERVE00, RESERVE10 = [11536786.090149844, 24026265.452085003]
 
+RESERVE01, RESERVE11 =[39658714.96042994, 75878131.847931]
+RESERVE00, RESERVE10 =[12025438.053268697, 23157867.74271]
 
 def plot_final_profits():
     # Observe how there is an optimal amount in!
@@ -69,7 +71,8 @@ def plot_final_profits():
         print(final_amount_out / 1e18)
         # amounts_out.append(final_profit_ratio**2)
         amounts_out.append(final_amount_out / 1e18)
-    opt, prof = arb_data.get_optimal_borrow_amount_and_net_profit()
+    opt = arb_data.get_optimal_borrow_amount()
+    prof = arb_data.profit_function(opt)
     print(f(19e21) / 1e18)
     print(opt)
     print("Optimal amount", opt / 1e21, prof / 1e18)

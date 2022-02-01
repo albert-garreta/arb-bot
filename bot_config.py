@@ -15,7 +15,7 @@ FTM_NETWORKS = ["ftm-main", "ftm-main-fork", "ftm-test"]
 MAIN_NETWORKS = ["ftm-main", "mainnet"]
 # TODO: integrate with the config file?
 
-passive_mode = True # prevents making blockchain transactions
+passive_mode = False  # prevents making blockchain transactions
 rebooter_bot = False  # bot reboots automatically in case of an error
 force_actions = False
 verbose = True
@@ -58,7 +58,7 @@ weth_balance_actor_and_caller = 10 * 1e18
 # Very important argument: max total value that we flashloan
 # Multiply by 0.995 yo givr some wiggle room
 max_value_of_flashloan = 0.995 * ((amount_for_fees) * 100 / lending_pool_fee)
-max_value_of_flashloan = 5e23
+max_value_of_flashloan = 50_000e18
 
 min_profit_ratio = 0.01
 if network.show_active() in FTM_NETWORKS:
@@ -100,10 +100,15 @@ elif network.show_active() in ETH_NETWORKS:
 gas_limit = 1_800_000
 
 
+def mult_list_by_scalar(_list, _scalar):
+    return [_scalar * element for element in _list]
+
+
 forced_reserves = [
-    (8812813628410115267563602, 19738137454139000000000000),
-    (38403585201566284827432565, 85967388690746000000000000),
+    mult_list_by_scalar([39658714.96042994, 75878131.847931], 1e18),
+    mult_list_by_scalar([12025438.053268697, 23157867.74271], 1e18),
 ]
+
 
 if (
     network.show_active()

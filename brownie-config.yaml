@@ -86,13 +86,12 @@ networks:
       - "USDC"
     token_addresses:
       WFTM: "0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83" # WFTM
-      USDC: "0x049d68029688eAbF473097a2fC38ef61633A3C7A" # USDC
+      USDC: "0x04068DA6C83AFCFA0e13ba15A6696662335D5B75" # USDC
       wrapped_main_token_address: "0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83"
     # usdt_address: "0x6c021Ae822BEa943b2E66552bDe1D2696a53fbB7" # TOMB
     # usdt_address: "0x4cdF39285D7Ca8eB3f090fDA0C069ba5F4145B37" # TSHARE
     lending_pool_addresses_provider_address: "0x6c793c628Fe2b480c5e6FB7957dDa4b9291F9c9b"
     price_feed_address: "0xf4766552D15AE4d256Ad41B6cf2933482B0680dc"
-
     dexes:
       names:
         - "spookyswap"
@@ -108,17 +107,20 @@ networks:
         swap_router_V2_address: "0x16327E3FbDaCA3bcF7E38F5Af2599D2DDc33aE52"
         uniswap_factory_address: "0xEF45d134b73241eDa7703fa787148D9C9F4950b0"
   ftm-test:
-    # this is actually wFTM, but we keep the name weth for simplicity of code
-    token1: "0xf1277d1Ed8AD466beddF92ef448A132661956621"
-    # unclear what address to be used here
-    token0: "0x076877073D287Ee8c10878B190d7166367899fdA"
-    wrapped_main_token_address: "0xf1277d1Ed8AD466beddF92ef448A132661956621"
+    token_names:
+      - "WFTM"
+      - "USDC"
+    token_addresses:
+      # this is actually wFTM, but we keep the name weth for simplicity of code
+      WFTM: "0xf1277d1Ed8AD466beddF92ef448A132661956621"
+      # unclear what address to be used here
+      USDC: "0x076877073D287Ee8c10878B190d7166367899fdA"
+      wrapped_main_token_address: "0xf1277d1Ed8AD466beddF92ef448A132661956621"
     lending_pool_addresses_provider_address: "0x6c793c628Fe2b480c5e6FB7957dDa4b9291F9c9b"
-    dex_names:
-      - "spookyswap"
-      - "spiritswap"
-    dex_addresses:
-      default_dex: "spookyswap"
+    dexes:
+      names:
+        - "spookyswap"
+        - "spiritswap"
       spookyswap:
         swap_router_V2_address: "0xcCAFCf876caB8f9542d6972f87B5D62e1182767d"
         uniswap_factory_address: "0x5D479c2a7FB79E12Ac4eBBAeDB0322B4d5F9Fd02"
@@ -130,8 +132,6 @@ networks:
         uniswap_factory_address: "0x5D479c2a7FB79E12Ac4eBBAeDB0322B4d5F9Fd02"
         fee: 0.3
         approx_slippage: 0.05
-
- 
   avax-main:
     token_names:
       - "USDC"

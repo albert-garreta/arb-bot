@@ -60,8 +60,8 @@ def get_dex_amount_out(_amount_in, dex_data):
 def get_dex_amount_in(_amount_out, dex_data):
     return _get_dex_amount_in(
         _amount_out ,
-        dex_data.reserves_in ,
-        dex_data.reserves_out ,
+        dex_data.reserves_in,
+        dex_data.reserves_out,
         dex_data.fee,
         dex_data.slippage,
     ) 
@@ -80,13 +80,13 @@ def _get_dex_amount_out(_amount_in, _reserve_in, _reserve_out, _dex_fee, _slippa
 
 def _get_dex_amount_in(_amount_out, _reserve_in, _reserve_out, _dex_fee, _slippage=0):
     # Function from UniswapV2Library with slippage
-    # TODO: the fee here appears once instead of twice as above. Is this advantageous?
+    # TODO: note the fee here appears once instead of twice as above.
     fee = 1 - _dex_fee / 100
     numerator = _amount_out * _reserve_in
     denominator = _reserve_out - fee * _amount_out
     amount_out = numerator / denominator
     amount_out += 1  # this is in UniswapV2Library. Why?
-    amount_out = amount_out * (1 - (_slippage / 100))
+    amount_out = amount_out / (1 - (_slippage / 100))
     return amount_out
 
 

@@ -2,12 +2,19 @@ from socket import MSG_EOR
 import bot_config
 from scripts.data_structures.general_data import GeneralData
 from scripts.data_structures.dotdict import dotdict
-from scripts.prices import find_optimal_borrow_amount_and_net_profit
-from scripts.utils import log, mult_list_by_scalar, get_account
+from scripts.prices import get_net_profit_v3, get_dex_amount_in
+from scripts.utils import (
+    log,
+    mult_list_by_scalar,
+    fix_parameters_of_function,
+    reverse_scalar_fun,
+)
 import numpy as np
+from scipy.optimize import minimize_scalar
 
 
 class ArbitrageData(GeneralData):
+    # TODO: consider changing these class names
     def __init__(self):
         super().__init__()
         self.buy_dex_index = None
@@ -19,7 +26,9 @@ class ArbitrageData(GeneralData):
         self.slippage_buy_dex = None
         self.slippage_sell_dex = None
         self.optimal_borrow_amount = None
+        self.amount_to_return = None
         self.net_profit = None
+        self._profit_function = None
 
     def update_given_buy_dex(self, _buy_dex_index):
         self.buy_dex_index = _buy_dex_index
@@ -31,19 +40,38 @@ class ArbitrageData(GeneralData):
         self.slippage_sell_dex = self.dex_slippages[sell_dex_index]
         self.reserves_buying_dex = self.reserves[_buy_dex_index]
         self.reserves_selling_dex = self.reserves[sell_dex_index]
+        self.set_profit_function()
+
+    def set_profit_function(self):
+        f = fix_parameters_of_function(
+            _fun=get_net_profit_v3,
+            _args_1_tuple=(self,),
+        )
+        self._profit_function = f
+
+    def profit_function(self, _borrow_amount):
+        return self._profit_function(_borrow_amount)
 
     def get_sell_dex_index(self, _buy_dex_index):
         return (_buy_dex_index + 1) % 2
 
-    def get_optimal_borrow_amount_and_net_profit(self):
-        # NOTE: These cannot be set as object attributes here because we need to
-        # do some checks to find the best possible arbitrage set up
-        optimal_amount, net_profit = find_optimal_borrow_amount_and_net_profit(self)
-        return optimal_amount, net_profit
+    def get_optimal_borrow_amount(self):
 
-    def update_optimal_borrow_amount_and_net_profit(self, optimal_amount, net_profit):
-        self.optimal_borrow_amount = optimal_amount
+        res = minimize_scalar(
+            reverse_scalar_fun(self._profit_function),
+            bounds=(0, self.max_value_of_flashloan),
+            method="bounded",
+        )
+        return res.x
+
+    def update_opt_borrow_amt_and_net_profit_and_amt_to_return(
+        self, optimal_borrow_amount, net_profit
+    ):
+        self.optimal_borrow_amount = optimal_borrow_amount
         self.net_profit = net_profit
+        self.amount_to_return = get_dex_amount_in(
+            optimal_borrow_amount, self.get_buy_dex_data()
+        )
 
     def get_dex_data(self, _buying):
         if _buying:
@@ -104,7 +132,8 @@ class ArbitrageData(GeneralData):
         return best_metrics
 
     def update_best_metrics(self, _buy_dex_index, _best_metrics):
-        borrow_amt, net_profit = self.get_optimal_borrow_amount_and_net_profit()
+        borrow_amt = self.get_optimal_borrow_amount()
+        net_profit = self.profit_function(borrow_amt)
         if net_profit > _best_metrics["net_profit"]:
             _best_metrics["net_profit"] = net_profit
             _best_metrics["borrow_amount"] = borrow_amt
@@ -118,8 +147,9 @@ class ArbitrageData(GeneralData):
         net_profit = _best_metrics["net_profit"]
         borrow_amount = _best_metrics["borrow_amount"]
         self.update_given_buy_dex(buy_dex_index)
-        self.update_optimal_borrow_amount_and_net_profit(borrow_amount, net_profit)
-
+        self.update_opt_borrow_amt_and_net_profit_and_amt_to_return(
+            borrow_amount, net_profit
+        )
 
     def set_summary_message(self, addendum=""):
         # TODO: create separate class for logging
