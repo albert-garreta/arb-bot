@@ -9,7 +9,7 @@ import "../interfaces/IUniswapV2Callee.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-contract ActorV2 is Ownable, IUniswapV2Callee {
+contract BotSmartContract is Ownable, IUniswapV2Callee {
     IUniswapV2Router02[] public routers;
     IUniswapV2Factory[] public factories;
     IUniswapV2Pair[] public pairs;

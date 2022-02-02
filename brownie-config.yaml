@@ -68,8 +68,9 @@ networks:
     price_feed_address: "0xf4766552D15AE4d256Ad41B6cf2933482B0680dc"
     dexes:
       names:
-        - "spookyswap"
+        # - "spookyswap"
         - "spiritswap"
+        - "paintswap"
       spookyswap:
         fee: 0.2
         approx_slippage: 0.0
@@ -80,6 +81,11 @@ networks:
         approx_slippage: 0.0
         swap_router_V2_address: "0x16327E3FbDaCA3bcF7E38F5Af2599D2DDc33aE52"
         uniswap_factory_address: "0xEF45d134b73241eDa7703fa787148D9C9F4950b0"
+      paintswap:
+        fee: 0.3
+        approx_slippage: 0.0
+        swap_router_V2_address: "0x733A9D1585f2d14c77b49d39BC7d7dd14CdA4aa5"
+        uniswap_factory_address: "0xfD000ddCEa75a2E23059881c3589F6425bFf1AbB"
   ftm-main-fork:
     token_names:
       - "WFTM"

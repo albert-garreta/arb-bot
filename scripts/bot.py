@@ -1,7 +1,7 @@
 from tkinter import E
 from brownie import chain
 import time, warnings, sys
-from scripts.deploy import get_actor
+from scripts.deploy import get_BotSmartContract
 from scripts.utils import (
     get_account,
     get_wallet_balances,
@@ -22,7 +22,7 @@ def main():
 
 class Bot(object):
     def __init__(self):
-        self.actor_smartcontract = get_actor()
+        self.bot_smartcontract = get_BotSmartContract()
         self.arb_data = StateData()
         self.testing = False
 
@@ -74,7 +74,7 @@ class Bot(object):
 
     def flashloan_and_swap(self):
         flashloan_args = self.get_flashloan_args()
-        tx = self.actor_smartcontract.requestFlashLoanAndAct(
+        tx = self.bot_smartcontract.requestFlashLoanAndAct(
             flashloan_args,
             {
                 "from": get_account(),
@@ -102,8 +102,8 @@ class Bot(object):
         )
         # TODO: clean this up
         print(flashloan_args)
-        print(self.actor_smartcontract.pairs(0))
-        print(self.actor_smartcontract.pairs(1))
+        print(self.bot_smartcontract.pairs(0))
+        print(self.bot_smartcontract.pairs(1))
         print(get_wallet_balances(get_account(), self.arb_data.tokens))
 
     def get_balances(self, address):
@@ -127,7 +127,7 @@ class Bot(object):
 
     def print_log_summary_with_balances_and_comment(self, comment=""):
         # TODO: create separate class for logging
-        actor_pre_loan_balance = self.get_balances(self.actor_smartcontract.address)
+        actor_pre_loan_balance = self.get_balances(self.bot_smartcontract.address)
         caller_pre_loan_balance = self.get_balances(get_account())
         msg = f"Actor balances: {actor_pre_loan_balance}\n"
         msg += f"Caller balances: {caller_pre_loan_balance}\n"

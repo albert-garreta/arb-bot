@@ -1,27 +1,27 @@
-from scripts.utils import get_account, get_address, get_token_names_and_addresses
+from scripts.utils import get_account, get_token_names_and_addresses
 from scripts.data_structures.static_data import get_all_dexes_and_factories
-from brownie import Actor
+from brownie import BotSmartContract
 import bot_config
 
 
-def get_actor():
-    print(f"Deploying Actor... (length {len(Actor)})")
-    if len(Actor) > 0:
-        print("Actor was already deployed")
-        return Actor[-1]
+def get_BotSmartContract():
+    print(f"Deploying BotSmartContract... (length {len(BotSmartContract)})")
+    if len(BotSmartContract) > 0:
+        print("BotSmartContract was already deployed")
+        return BotSmartContract[-1]
     else:
-        return deploy_actor()
+        return deploy_BotSmartContract()
 
 
-def deploy_actor():
-    args = get_actor_constructor_arguments()
+def deploy_BotSmartContract():
+    args = get_BotSmartContract_constructor_arguments()
     print(args)
-    Actor.deploy(*args, {"from": get_account()})
+    BotSmartContract.deploy(*args, {"from": get_account()})
     print("Deployed!")
-    return Actor[-1]
+    return BotSmartContract[-1]
 
 
-def get_actor_constructor_arguments():
+def get_BotSmartContract_constructor_arguments():
     routers_and_factories = get_all_dexes_and_factories(bot_config.dex_names)
     token_names, token_addresses = get_token_names_and_addresses()
     # TODO: clean this up
@@ -31,4 +31,4 @@ def get_actor_constructor_arguments():
 
 
 def main():
-    deploy_actor()
+    deploy_BotSmartContract()

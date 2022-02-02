@@ -1,14 +1,12 @@
 from socket import MSG_EOR
 import bot_config
 from scripts.data_structures.static_data import StaticData
-from scripts.data_structures.dotdict import dotdict
 from scripts.prices import get_net_profit_v3, get_dex_amount_in
 from scripts.utils import (
     log,
     mult_list_by_scalar,
     fix_parameters_of_function,
     reverse_scalar_fun,
-    get_latest_block_number,
 )
 import numpy as np
 from scipy.optimize import minimize_scalar

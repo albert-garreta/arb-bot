@@ -1,7 +1,6 @@
 import bot_config
 from brownie import interface, config, network
 from scripts.utils import get_account, get_token_names_and_addresses
-from scripts.data_structures.dotdict import dotdict
 
 
 class dotdict(dict):
