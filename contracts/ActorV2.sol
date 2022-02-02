@@ -131,12 +131,13 @@ contract ActorV2 is Ownable, IUniswapV2Callee {
             data.expectedAmountTkn0ToReturn,
             actualAmountTkn0ToReturn
         );
-        uniswapV2CallCheckPostRequisites(
-            amountTkn0Out,
-            actualAmountTkn0ToReturn
-        );
+        // uniswapV2CallCheckPostRequisites(
+        //     amountTkn0Out,
+        //     actualAmountTkn0ToReturn
+        // );
 
-        returnFundsToPair(actualAmountTkn0ToReturn, data.buyDexIndex);
+        //returnFundsToPair(actualAmountTkn0ToReturn, data.buyDexIndex);
+        returnFundsToPair(data.expectedAmountTkn0ToReturn, data.buyDexIndex);
     }
 
     function uniswapV2CallCheckPreRequisites(
@@ -178,12 +179,13 @@ contract ActorV2 is Ownable, IUniswapV2Callee {
     }
 
     function returnFundsToPair(
-        uint256 _actualAmountTkn0ToReturn,
+        uint256 expectedAmountTkn0ToReturn,
         uint8 _buyDexIndex
     ) internal {
         tokens[0].transfer(
             address(pairs[_buyDexIndex]),
-            _actualAmountTkn0ToReturn + 1000
+            //_actualAmountTkn0ToReturn + 1000
+            expectedAmountTkn0ToReturn + 1000
         );
         // tokens[0].transfer(
         //     address(pairs[_buyDexIndex]),
@@ -223,7 +225,7 @@ contract ActorV2 is Ownable, IUniswapV2Callee {
     }
 
     function sendAllFundsToOwner(address _sender) internal {
-        tokens[0].transfer(_sender, tokens[0].balanceOf(_sender));
+        tokens[0].transfer(_sender, tokens[0].balanceOf(address(this)));
     }
 
     function normalSwap(uint256 _amountBorrowed, CallbackData memory _data)

@@ -83,11 +83,11 @@ def _get_dex_amount_in(_amount_out, _reserve_in, _reserve_out, _dex_fee, _slippa
     # TODO: note the fee here appears once instead of twice as above.
     fee = 1 - _dex_fee / 100
     numerator = _amount_out * _reserve_in
-    denominator = _reserve_out - fee * _amount_out
-    amount_out = numerator / denominator
-    amount_out += 1  # this is in UniswapV2Library. Why?
-    amount_out = amount_out / (1 - (_slippage / 100))
-    return amount_out
+    denominator = (_reserve_out -  _amount_out)*fee
+    _amount_in = numerator / denominator
+    _amount_in += 1  # this is in UniswapV2Library. Why?
+    _amount_in = _amount_in / (1 - (_slippage / 100))
+    return _amount_in
 
 
 def get_oracle_price(oracle=None, buying=True):

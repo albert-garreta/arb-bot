@@ -62,7 +62,7 @@ max_value_of_flashloan = 50_000e18
 
 min_profit_ratio = 0.01
 if network.show_active() in FTM_NETWORKS:
-    min_net_profit = 3e18 * 1  # WFTM
+    min_net_profit = 1e18 * 3  # WFTM
 elif network.show_active() in ETH_NETWORKS:
     min_net_profit = 1e18 * 0.001
 else:
@@ -93,7 +93,7 @@ log_searches_path = directory + "_searches_logs.txt"
 # NOTE: this is only used for the flashloan call of actor
 # gas_strategy = GasNowStrategy("fast")
 if network.show_active() in FTM_NETWORKS:
-    gas_strategy = "1000 gwei"  # GasNowStrategy("fast")
+    gas_strategy = "1200 gwei"  # GasNowStrategy("fast")
 elif network.show_active() in ETH_NETWORKS:
     gas_strategy = 50
 # this is based on a successful run of the flashloan call
@@ -104,10 +104,11 @@ def mult_list_by_scalar(_list, _scalar):
     return [_scalar * element for element in _list]
 
 
-forced_reserves = [
-    mult_list_by_scalar([39658714.96042994, 75878131.847931], 1e18),
-    mult_list_by_scalar([12025438.053268697, 23157867.74271], 1e18),
-]
+forced_reserves = None
+# [
+#     mult_list_by_scalar([39658714.96042994, 75878131.847931], 1e18),
+#     mult_list_by_scalar([12025438.053268697, 23157867.74271], 1e18),
+# ]
 
 
 if (

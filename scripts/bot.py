@@ -13,6 +13,8 @@ from scripts.utils import (
     log,
     rebooter,
     mult_list_by_scalar,
+    is_testing_mode,
+    get_latest_block_number,
 )
 from bot_config import (
     LOCAL_BLOCKCHAIN_ENVIRONMENTS,
@@ -27,6 +29,7 @@ import sys
 from datetime import date, datetime
 import warnings
 from brownie.network.gas.strategies import GasNowStrategy, ExponentialScalingStrategy
+import sys
 
 
 def main():
@@ -37,6 +40,7 @@ class Bot(object):
     def __init__(self):
         self.actor_smartcontract = get_actor_V2()
         self.arb_data = ArbitrageData()
+        self.testing = False
         # if not bot_config.passive_mode:
         #    self.prepare_actor_smartcontract()
 
@@ -62,7 +66,13 @@ class Bot(object):
         self.arb_data.print_summary()
         if self.arb_data.passes_requirements():
             self.arb_data.log_summary(bot_config.log_searches_path)
-            return self.act()
+            if self.is_testing_mode():
+                return self.act_test()
+            else:
+                return self.act()
+
+    def is_testing_mode(self):
+        return "PYTEST_CURRENT_TEST" in sys.argv[0]
 
     def act(self):
         if bot_config.passive_mode:
@@ -74,6 +84,14 @@ class Bot(object):
             return tx
         except Exception as e:
             self.log_failure(e)
+
+    def act_test(self):
+        # Same as act but it halts if flashloand_and_swap fails
+        # This allows to inspect the tx in brownie console
+        if bot_config.passive_mode:
+            return None
+        self.log_pre_action()
+        return self.flashloan_and_swap()
 
     def flashloan_and_swap(self):
         flashloan_args = (
@@ -105,7 +123,7 @@ class Bot(object):
             flashloan_args,
             {
                 "from": get_account(),
-                # "gas_price": bot_config.gas_strategy,
+                "gas_price": bot_config.gas_strategy,
                 # "gas_limit": bot_config.gas_limit,
             },
         )
@@ -217,14 +235,3 @@ def epoch_due(block_number):
     except:
         warnings.warn("Retrieving block number failed. Proceeding anyway")
         return True
-
-
-def get_latest_block_number():
-    # Retrieve the latest block mined: chain[-1]
-    # https://eth-brownie.readthedocs.io/en/stable/core-chain.html#accessing-block-information
-    # Get its number
-    try:
-        latest_block_number = chain[-1]["number"]
-        return latest_block_number
-    except Exception as e:
-        return e

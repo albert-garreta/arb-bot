@@ -51,11 +51,14 @@ RESERVE00, RESERVE10 = [11536786.090149844, 24026265.452085003]
 RESERVE01, RESERVE11 =[39658714.96042994, 75878131.847931]
 RESERVE00, RESERVE10 =[12025438.053268697, 23157867.74271]
 
+# RESERVE01, RESERVE11 =[38781318.59228811, 80733540.513515]
+# RESERVE00, RESERVE10 = [11380023.156515732, 23692960.259842]
+
 def plot_final_profits():
     # Observe how there is an optimal amount in!
     number_points = 100
     scale = 1
-    amount_in_rndn = random.choices(range(-100, 100, scale), k=number_points)
+    amount_in_rndn = random.choices(range(0, 100, scale), k=number_points)
     amounts_out = []
     arb_data = ArbitrageData()
     arb_data.reserves = [
@@ -68,7 +71,7 @@ def plot_final_profits():
 
     for amount_in in amount_in_rndn:
         final_amount_out = f(amount_in * 1e21)
-        print(final_amount_out / 1e18)
+        print(amount_in, final_amount_out / 1e18)
         # amounts_out.append(final_profit_ratio**2)
         amounts_out.append(final_amount_out / 1e18)
     opt = arb_data.get_optimal_borrow_amount()

@@ -1,12 +1,28 @@
-from brownie import accounts, network, config, interface
+from brownie import accounts, network, config, interface, chain
 from scipy.optimize import linprog
 from datetime import datetime
-import sys, getopt
+import sys, getopt, os
 import bot_config
 from bot_config import (
     LOCAL_BLOCKCHAIN_ENVIRONMENTS,
     NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS,
 )
+
+
+
+def get_latest_block_number():
+    # Retrieve the latest block mined: chain[-1]
+    # https://eth-brownie.readthedocs.io/en/stable/core-chain.html#accessing-block-information
+    # Get its number
+    try:
+        latest_block_number = chain[-1]["number"]
+        return latest_block_number
+    except Exception as e:
+        return e
+
+
+def is_testing_mode():
+    return "PYTEST_CURRENT_TEST" in  sys.argv[0]
 
 
 def log(msg, path):

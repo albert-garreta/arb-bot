@@ -8,9 +8,11 @@ from scripts.utils import (
     mult_list_by_scalar,
     fix_parameters_of_function,
     reverse_scalar_fun,
+    get_latest_block_number,
 )
 import numpy as np
 from scipy.optimize import minimize_scalar
+from brownie import chain
 
 
 class ArbitrageData(GeneralData):
@@ -153,15 +155,20 @@ class ArbitrageData(GeneralData):
 
     def set_summary_message(self, addendum=""):
         # TODO: create separate class for logging
+        price_buy_dex = self.get_dex_price(self.reserves_buying_dex)
+        price_sell_dex = self.get_dex_price(self.reserves_selling_dex)
         msg = ""
+        # Too expenive: msg += f"Block number: {get_latest_block_number()}\n"
         msg += f"Reserves buying dex: {mult_list_by_scalar(self.reserves_buying_dex,1e-18)}\n"
         msg += f"Reserves selling dex: {mult_list_by_scalar(self.reserves_selling_dex,1e-18)}\n"
-        msg += f"Price buying dex: {self.get_dex_price(self.reserves_buying_dex)}\n"
-        msg += f"Price selling dex: {self.get_dex_price(self.reserves_selling_dex)}\n"
+        msg += f"Price buying dex: {price_buy_dex}\n"
+        msg += f"Price selling dex: {price_sell_dex}\n"
+        msg += f"Price ratio: {price_buy_dex/price_sell_dex}\n"
         msg += f"Buying dex index: {self.buy_dex_index}\n"
         msg += f"Net profit: {self.net_profit/1e18}\n"
         msg += f"Optimal borrow amount: {self.optimal_borrow_amount/1e18}\n"
         msg += addendum
+        msg += "\n"
         self.summary_message = msg
 
     def print_summary(self):
