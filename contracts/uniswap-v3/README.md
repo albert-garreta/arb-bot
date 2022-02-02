@@ -1,1 +1,0 @@
-I'm copying the contracts --and modifying its inner imports accordingly-- here since I had problems setting the dependencies with brownie (in brownie-config). The issue comes from the folder structure of UniswapV3 and the way the @uniswap are placed in the imports

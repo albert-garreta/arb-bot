@@ -1,296 +1,318 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: Apache
+
 pragma solidity ^0.8.0;
 
-// import "@aave/contracts/interfaces/ILendingPoolAddressesProvider.sol";
-// import "@aave/contracts/interfaces/ILendingPool.sol";
-// import "@aave/contracts/flashloan/base/FlashLoanReceiverBase.sol";
-
-import "./aave-protocol-v2/ILendingPoolAddressesProvider.sol";
-import "./aave-protocol-v2/ILendingPool.sol";
-import "./aave-protocol-v2//FlashLoanReceiverBase.sol";
-
+import "../interfaces/IUniswapV2Router02.sol";
+import "../interfaces/IUniswapV2Pair.sol";
+import "../interfaces/IUniswapV2Factory.sol";
+import "../interfaces/IUniswapV2Callee.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "./uniswap-v2/IUniswapV2Router02.sol";
 
-/** 
-    !!!
-    Never keep funds permanently on your FlashLoanReceiverBase contract as they could be 
-    exposed to a 'griefing' attack, where the stored funds are used by an attacker.
-    !!!
- */
-contract Actor is FlashLoanReceiverBase, Ownable {
-    // SwapperV3 public swapper;
-    IUniswapV2Router02[] internal swapRouters;
+contract ActorV2 is Ownable, IUniswapV2Callee {
+    IUniswapV2Router02[] public routers;
+    IUniswapV2Factory[] public factories;
+    IUniswapV2Pair[] public pairs;
+    IERC20[] public tokens;
 
-    // This is currently used only for testing purposes to check
-    // the loan ammount received during the flash loan
-    uint256[] public amountsLoanReceived;
-    uint256[] public preLoanBalances;
-    // Used only for testing.
-    // TODO: delete for production?
-    // TODO: we know this will be a length-2 array of length-2 arrays:
-    // specify for efficiency
-    uint256[] public swapReturns;
-    uint256 public netValueGained;
+    // TODO: why call it CallbackData?
+    struct CallbackData {
+        address[] tokenAddresses;
+        uint256 amountTkn1ToBorrow;
+        uint256 expectedAmountTkn0ToReturn;
+        uint8 buyDexIndex;
+        uint8 sellDexIndex;
+        bool[] orderReversions;
+        uint256 buyDexFee;
+    }
+
+    CallbackData internal data;
+
+    event Log(
+        uint256 indexed contractBalToken0,
+        uint256 indexed expectedAmountTkn0ToReturn,
+        uint256 indexed actualAmountTkn0ToReturn
+    );
+
+    event Log2(uint256 amountTkn1ToBorrow);
 
     constructor(
-        address[] memory _swapRouterAddresses,
-        address _lendingPoolAddressesProviderAddress
-    )
-        FlashLoanReceiverBase(
-            ILendingPoolAddressesProvider(_lendingPoolAddressesProviderAddress)
-        )
-    {
-        for (uint256 i = 0; i < _swapRouterAddresses.length; i++) {
-            swapRouters.push(IUniswapV2Router02(_swapRouterAddresses[i]));
-        }
-    }
-
-    // REMEMBER:
-    // If you flash 100 AAVE, the 9bps fee is 0.09 AAVE
-    // If you flash 500,000 DAI, the 9bps fee is 450 DAI
-    // If you flash 10,000 LINK, the 9bps fee is 45 LINK
-    // All of these fees need to be sitting ON THIS CONTRACT
-    // before you execute this batch flash.
-    function requestFlashLoanAndAct(
-        address[] memory _tokenAddresses,
-        uint256[] memory amounts,
-        uint8 buyingDexIndex,
-        uint8 sellingDexIndex,
-        uint256 priceTkn0Tkn1
-    ) public onlyOwner {
-        // TODO: Does the onlyOwner here prevent grieffing attacks?
-        address receiverAddress = address(this);
-        uint256[] memory modes = new uint256[](amounts.length);
-        // TODO: is it faster if I encode in python?
-        bytes memory params = abi.encode(
-            uint8(sellingDexIndex),
-            uint256(priceTkn0Tkn1)
-        );
-
-        for (uint256 i = 0; i < amounts.length; i++) {
-            // 0 = no debt, 1 = stable, 2 = variable
-            modes[i] = 0;
-        }
-
-        // just for testing purposes
-        // TODO: delete or skip in production
-        for (uint256 i = 0; i < amounts.length; i++) {
-            IERC20 token = IERC20(_tokenAddresses[i]);
-            preLoanBalances.push(token.balanceOf(address(this)));
-        }
-
-        LENDING_POOL.flashLoan(
-            receiverAddress,
-            _tokenAddresses,
-            amounts,
-            modes,
-            address(this), //onBehalfOf
-            params,
-            0 // referralCode
-        );
-
-        withdrawAllFunds(_tokenAddresses);
-    }
-
-    // This function is called after your contract has received the flash loaned amount
-    function executeOperation(
-        address[] calldata assets,
-        uint256[] calldata amounts,
-        uint256[] calldata premiums,
-        address initiator,
-        bytes calldata params
-    ) external override returns (bool) {
-        //
-        // This contract now has the funds requested.
-        // Your logic goes here.
-        //
-
-        // TODO: This should be deleted or avoided for production.
-        // Currently we use it for testing purposes
-        for (uint256 i = 0; i < amounts.length; i++) {
-            amountsLoanReceived.push(
-                IERC20(assets[i]).balanceOf(initiator) - preLoanBalances[i]
+        address[] memory _routerAddresses,
+        address[] memory _factoryAddresses,
+        address[] memory _tokenAddresses
+    ) {
+        for (uint8 i = 0; i < _routerAddresses.length; i++) {
+            routers.push(IUniswapV2Router02(_routerAddresses[i]));
+            factories.push(IUniswapV2Factory(_factoryAddresses[i]));
+            tokens.push(IERC20(_tokenAddresses[i]));
+            pairs.push(
+                IUniswapV2Pair(
+                    factories[i].getPair(_tokenAddresses[0], _tokenAddresses[1])
+                )
             );
         }
+    }
 
-        (uint8 sellingDexIndex, uint256 priceTkn0Tkn1) = abi.decode(
-            params,
-            (uint8, uint256)
-        );
+    //TODO: what is this for?
+    receive() external payable {}
 
-        uint8 buyingDexIndex = 1;
-        if (sellingDexIndex == 1) {
-            buyingDexIndex = 0;
-        }
+    function requestFlashLoanAndAct(CallbackData memory _data) public {
+        bytes memory params = abi.encode(_data);
+        // (uint112 _reserve0, uint112 _reserve1, ) = pairs[_data.buyDexIndex]
+        //     .getReserves();
 
-        doSwaps(
-            assets[0],
-            assets[1],
-            amounts[0],
-            amounts[1],
-            0, // minAmountOut0,
-            0, // minAmountOut1,
-            buyingDexIndex, // router0Index
-            sellingDexIndex // router1Index
-        );
-
-        // At the end of your logic above, this contract owes
-        // the flashloaned amounts + premiums.
-        // Therefore ensure your contract has enough to repay
-        // these amounts
-
-        // Approve the LendingPool contract allowance to *pull* the owed amount
-        for (uint256 i = 0; i < assets.length; i++) {
-            // TODO: check if the transaction reverts if we lost money
+        if (!_data.orderReversions[_data.buyDexIndex]) {
             require(
-                IERC20(assets[i]).balanceOf(initiator) -
-                    (amounts[i] + premiums[i]) >=
-                    0,
-                "amountOwing is greater than the flashloan initiatior balance"
+                address(tokens[1]) == pairs[_data.buyDexIndex].token1(),
+                "Incorrect token orders"
             );
-
-            IERC20(assets[i]).approve(
-                address(LENDING_POOL),
-                amounts[i] + premiums[i]
+            emit Log2(_data.amountTkn1ToBorrow);
+            pairs[_data.buyDexIndex].swap(
+                0,
+                _data.amountTkn1ToBorrow,
+                address(this),
+                params
+            );
+        } else {
+            require(
+                address(tokens[1]) == pairs[_data.buyDexIndex].token0(),
+                "Incorrect token orders"
+            );
+            pairs[_data.buyDexIndex].swap(
+                _data.amountTkn1ToBorrow,
+                0,
+                address(this),
+                params
             );
         }
-
-        netValueGained =
-            (swapReturns[0] / priceTkn0Tkn1) +
-            swapReturns[1] -
-            (amounts[0] +
-                premiums[0] +
-                amounts[1] +
-                premiums[1] /
-                priceTkn0Tkn1 +
-                preLoanBalances[0] +
-                (preLoanBalances[1] / priceTkn0Tkn1));
-        require(
-            netValueGained >= 0,
-            "The net value of the operation is negative"
-        );
-
-        return true;
+        sendAllFundsToOwner(msg.sender);
     }
 
-    function doSwaps(
-        address _token0Address,
-        address _token1Address,
+    function pancakeCall(
+        // The name of the callback function is not the same on every dex.
+        // TODO: Can I set up the fallback function of this contract to manage this, instead of
+        // adding a redirection function as this one per every different callback function name?
+        address _sender,
         uint256 _amount0,
         uint256 _amount1,
-        uint256 _minAmountOut0,
-        uint256 _minAmountOut1,
-        uint8 _buyingDexIndex,
-        uint8 _sellingDexIndex
-    ) internal {
-        // tx = _token0.approve(_swapper.address, _amount_in, {"from": account})
-        // tx.wait(1)
-
-        uint256[] memory amountsOut = swapExactTokensForTokens(
-            _token0Address,
-            _token1Address,
-            _amount0,
-            _minAmountOut0,
-            _buyingDexIndex
-        );
-
-        swapReturns.push(amountsOut[1]);
-        // _token1.approve(_swapper.address, amount_out_first_swap, {"from": account})
-
-        amountsOut = swapExactTokensForTokens(
-            _token1Address,
-            _token0Address,
-            _amount1,
-            _minAmountOut1,
-            _sellingDexIndex
-        );
-        // Only for testing
-        swapReturns.push(amountsOut[1]);
+        bytes calldata _data
+    ) public {
+        uniswapV2Call(_sender, _amount0, _amount1, _data);
     }
 
-    function withdrawAllFunds(address[] memory _tokenAddresses)
+    function uniswapV2Call(
+        address _sender,
+        uint256 _amount0,
+        uint256 _amount1,
+        bytes calldata _data
+    ) public {
+        data = abi.decode(_data, (CallbackData));
+
+        bool reversedOrder = data.orderReversions[data.buyDexIndex];
+        if (reversedOrder) {
+            (_amount0, _amount1) = (_amount1, _amount0);
+        }
+
+        uniswapV2CallCheckPreRequisites(_sender, data);
+        uint256 amountTkn0Out = normalSwap(_amount1, data);
+
+        uint256[] memory balances = new uint256[](2);
+        balances[0] = tokens[0].balanceOf(address(this));
+        balances[1] = tokens[1].balanceOf(address(this));
+
+        emit Log(balances[0], data.expectedAmountTkn0ToReturn, 0);
+        // //TODO: check debug tools in brownie
+        uint256 actualAmountTkn0ToReturn = computeActualAmountTkn0ToReturn(
+            data.amountTkn1ToBorrow,
+            data
+        );
+        emit Log(
+            balances[0],
+            data.expectedAmountTkn0ToReturn,
+            actualAmountTkn0ToReturn
+        );
+        // uniswapV2CallCheckPostRequisites(
+        //     amountTkn0Out,
+        //     actualAmountTkn0ToReturn
+        // );
+
+        //returnFundsToPair(actualAmountTkn0ToReturn, data.buyDexIndex);
+        returnFundsToPair(data.expectedAmountTkn0ToReturn, data.buyDexIndex);
+    }
+
+    function uniswapV2CallCheckPreRequisites(
+        address _sender,
+        CallbackData memory _data
+    ) public {
+        require(_sender == address(this), "Not from this contract");
+        require(
+            msg.sender ==
+                IUniswapV2Factory(factories[_data.buyDexIndex]).getPair(
+                    _data.tokenAddresses[0],
+                    _data.tokenAddresses[1]
+                )
+        ); // ensure that msg.sender is a V2 pair
+        require(
+            tokens[0].balanceOf(address(this)) == 0,
+            "The token0 balance should be 0 here"
+        );
+
+        require(
+            _data.amountTkn1ToBorrow == tokens[1].balanceOf(address(this)),
+            "Not enough token1 received"
+        );
+    }
+
+    function uniswapV2CallCheckPostRequisites(
+        uint256 amountTkn0Out,
+        uint256 actualAmountTkn0ToReturn
+    ) public {
+        require(
+            amountTkn0Out > actualAmountTkn0ToReturn + 1000000,
+            "Non-positive net profit accrued"
+        );
+        require(
+            tokens[0].balanceOf(address(this)) >
+                actualAmountTkn0ToReturn + 1000000,
+            "Not enough token0s to return"
+        );
+    }
+
+    function returnFundsToPair(
+        uint256 expectedAmountTkn0ToReturn,
+        uint8 _buyDexIndex
+    ) internal {
+        tokens[0].transfer(
+            address(pairs[_buyDexIndex]),
+            //_actualAmountTkn0ToReturn + 1000
+            expectedAmountTkn0ToReturn + 1000
+        );
+        // tokens[0].transfer(
+        //     address(pairs[_buyDexIndex]),
+        //     tokens[0].balanceOf(address(this))
+        // );
+        // tokens[1].transfer(
+        //     address(pairs[_buyDexIndex]),
+        //     tokens[1].balanceOf(address(this))
+        // );
+        // require(
+        //     tokens[0].balanceOf(address(this)) == 0 &&
+        //         tokens[1].balanceOf(address(this)) == 0,
+        //     "Something went wront while transfering tokens back to the pair"
+        // );
+
+        // uint256 balance0 = IERC20(tokens[0]).balanceOf(
+        //     address(pairs[_buyDexIndex])
+        // );
+        // uint256 balance1 = IERC20(tokens[1]).balanceOf(
+        //     address(pairs[_buyDexIndex])
+        // );
+        //
+        // uint256 amount0In = balance0 > _reserve0 - _amount0Out
+        //     ? balance0 - (_reserve0 - _amount0Out)
+        //     : 0;
+        // uint256 amount1In = balance1 > _reserve1 - _amount1Out
+        //     ? balance1 - (_reserve1 - _amount1Out)
+        //     : 0;
+        // emit pairSwapEvent(_amount0In, _amount1In, balancesAdjusted);
+        //
+        // uint256 balance0Adjusted = balance0 * (1000) - 3 * (_amount0In);
+        // uint256 balance1Adjusted = balance1 * (1000) - 3 * (_amount1In);
+        //
+        // balancesAdjusted.push(balance0Adjusted);
+        // balancesAdjusted.push(balance1Adjusted);
+        // emit pairSwapEvent(_amount0In, _amount1In, balancesAdjusted);
+    }
+
+    function sendAllFundsToOwner(address _sender) internal {
+        tokens[0].transfer(_sender, tokens[0].balanceOf(address(this)));
+    }
+
+    function normalSwap(uint256 _amountBorrowed, CallbackData memory _data)
         public
-        onlyOwner
+        returns (uint256)
     {
-        // Send gains to user. Important to prevent grieffing attacks
-        for (uint256 i = 0; i < _tokenAddresses.length; i++) {
-            // TODO: not loop over all list, but only those where the balance is >0
-            IERC20 token = IERC20(_tokenAddresses[i]);
-            token.transfer(msg.sender, token.balanceOf(address(this)));
+        tokens[1].approve(
+            address(routers[_data.sellDexIndex]),
+            _amountBorrowed + 100000
+        );
+
+        address[] memory path = new address[](2);
+        path[0] = _data.tokenAddresses[1];
+        path[1] = _data.tokenAddresses[0];
+
+        uint256[] memory amounts = routers[_data.sellDexIndex]
+            .swapExactTokensForTokens(
+                _amountBorrowed,
+                uint256(0),
+                path,
+                address(this),
+                block.timestamp
+            );
+
+        require(
+            tokens[1].balanceOf(address(this)) == 0,
+            "We should have no token1s here"
+        );
+
+        return amounts[0];
+    }
+
+    function computeActualAmountTkn0ToReturn(
+        uint256 _amountTkn1Borrwed,
+        CallbackData memory _data
+    ) internal view returns (uint256) {
+        // Due to price variability, the expected amount of Tkn0 to return may be different than the one computed
+        // before interacting with the smartcontract. Hence we recalculate it here
+        (uint256 reserveTkn0, uint256 reserveTkn1) = getOrderedReserves(
+            pairs[_data.buyDexIndex],
+            data.orderReversions[_data.buyDexIndex]
+        );
+
+        // careful on the order of reserves here: reserveIn is the reserve of token1 because we are selling
+        return
+            getAmountIn(
+                _amountTkn1Borrwed,
+                reserveTkn0,
+                reserveTkn1,
+                _data.buyDexFee
+            );
+    }
+
+    function getOrderedReserves(IUniswapV2Pair _pair, bool _orderReversed)
+        internal
+        view
+        returns (uint256, uint256)
+    {
+        // The method getReserves() from UniswapPairs need not return the desired order of reserves
+        // TODO: is the order, however, constant? If not, then I cannot use the attribute order_reversions
+        // from CallbackData
+        (
+            uint256 reserveTkn0,
+            uint256 reserveTkn1,
+            uint32 blockTimestampLast
+        ) = _pair.getReserves();
+        if (_orderReversed) {
+            return (reserveTkn1, reserveTkn0);
+        } else {
+            return (reserveTkn0, reserveTkn1);
         }
     }
 
-    function swapExactTokensForTokens(
-        address _tokenInAddress,
-        address _tokenOutAddress,
-        uint256 _amountIn,
-        uint256 _minAmountOut,
-        uint256 _dexIndex
-    ) public returns (uint256[] memory) {
-        // No need to do this step in the second swap of the
-        // twoHorpArbitrage function
-
-        IERC20 tokenIn = IERC20(_tokenInAddress);
-        tokenIn.approve(address(swapRouters[_dexIndex]), _amountIn);
-
-        // require(
-        //     tokenIn.allowance(
-        //         address(this),
-        //         address(swapRouters[_routerIndex])
-        //     ) == _amountIn
-        // );
-        // require(tokenIn.balanceOf(_whoToTransferFrom) == _amountIn);
-
-        address[] memory path = new address[](2);
-        path[0] = _tokenInAddress;
-        path[1] = _tokenOutAddress;
-
-        uint256[] memory amounts = swapRouters[_dexIndex]
-            .swapExactTokensForTokens(
-                _amountIn,
-                _minAmountOut, // min amount out
-                path,
-                address(this),
-                block.timestamp
-            );
-
-        return amounts;
-    }
-
-    function swapTokensForExactTokens(
-        address _tokenInAddress,
-        address _tokenOutAddress,
-        uint256 _amountOut,
-        uint256 _maxAmountIn,
-        uint256 _dexIndex
-    ) public returns (uint256[] memory) {
-        // No need to do this step in the second swap of the
-        // twoHorpArbitrage function
-
-        IERC20 tokenIn = IERC20(_tokenInAddress);
-        tokenIn.approve(address(swapRouters[_dexIndex]), _maxAmountIn + 100000);
-
+    // copied from UniswapV2Library
+    function getAmountIn(
+        uint256 amountOut,
+        uint256 reserveIn,
+        uint256 reserveOut,
+        uint256 fee
+    ) internal pure returns (uint256 amountIn) {
+        require(amountOut > 0, "UniswapV2Library: INSUFFICIENT_OUTPUT_AMOUNT");
         require(
-            tokenIn.allowance(address(this), address(swapRouters[_dexIndex])) >=
-                _maxAmountIn
+            reserveIn > 0 && reserveOut > 0,
+            "UniswapV2Library: INSUFFICIENT_LIQUIDITY"
         );
-        require(tokenIn.balanceOf(address(this)) >= _maxAmountIn);
-
-        address[] memory path = new address[](2);
-        path[0] = _tokenInAddress;
-        path[1] = _tokenOutAddress;
-
-        uint256[] memory amounts = swapRouters[_dexIndex]
-            .swapTokensForExactTokens(
-                _amountOut,
-                _maxAmountIn,
-                path,
-                address(this),
-                block.timestamp
-            );
-
-        return amounts;
+        uint256 numerator = reserveIn * amountOut * 1000;
+        uint256 denominator = (reserveOut - amountOut) * fee;
+        amountIn = (numerator / denominator) + 1;
     }
 }

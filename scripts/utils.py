@@ -9,7 +9,6 @@ from bot_config import (
 )
 
 
-
 def get_latest_block_number():
     # Retrieve the latest block mined: chain[-1]
     # https://eth-brownie.readthedocs.io/en/stable/core-chain.html#accessing-block-information
@@ -22,7 +21,7 @@ def get_latest_block_number():
 
 
 def is_testing_mode():
-    return "PYTEST_CURRENT_TEST" in  sys.argv[0]
+    return "PYTEST_CURRENT_TEST" in sys.argv[0]
 
 
 def log(msg, path):
@@ -66,10 +65,12 @@ def rebooter(function):
     return wrapped_fun
 
 
-def get_address(_name):
-    # This line of code is used so often that maybe it is better to have
-    # a short-hand version of it
-    return config["networks"][network.show_active()][_name]
+def print_args_wrapped(fun):
+    def w_fun(*args, **kwargs):
+        print(*args)
+        return fun(*args, **kwargs)
+
+    return w_fun
 
 
 def get_token_names_and_addresses():
@@ -113,96 +114,3 @@ def get_account(index=None, id=None):
         return accounts[0]
     else:
         return accounts.add(config["wallets"]["from_key"])
-
-
-def ensure_amount_of_wrapped_maintoken(_amount: int, _actor):
-    # Makes sure that the balance between actor and caller of wrapped
-    # maintoken is the one passed in the argument
-
-    weth = interface.IWeth(
-        config["networks"][network.show_active()]["token_addresses"][
-            "wrapped_main_token_address"
-        ]
-    )
-    actor_balance = weth.balanceOf(_actor.address)
-    caller_balance = weth.balanceOf(get_account())
-    total_balance = actor_balance + caller_balance
-    if total_balance < _amount:
-        print(f"Depositing {_amount} mainnet token into its wrapped ERC20 version...")
-        tx = weth.deposit({"from": get_account(), "value": _amount - total_balance})
-        tx.wait(1)
-        print("Deposit done")
-    else:
-        print("Caller already has enough Wrapped main token")
-
-
-contract_name_to_contract_type = {
-    # "weth_token_usd_price_feed": MockV3Aggregator,
-    # "dai_token_usd_price_feed": MockV3Aggregator,
-    # "dapp_token_usd_price_feed": MockV3Aggregator,
-    # "dai_token": MockDai,
-    # "weth_token": MockWeth,
-    # "dapp_token": DappToken,
-    "weth_address": interface.IWeth,
-    "usdt_address": interface.IERC20,
-}
-
-
-def get_contract(contract_name):
-    """
-    This function will grab the eth/usd feed address from the brownie config if defined.
-    Otherwise it will deplou a mock verion of that contract.
-    Returns the contract.
-
-        Args:
-            contract_name (string)
-
-        Returns:
-            brownie.network.contract.ProjectContract:
-            the address of the most recently deployed version of this contract
-    """
-
-    contract_type = contract_name_to_contract_type[contract_name]
-
-    if network.show_active() in NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS:
-        if len(contract_type) <= 0:
-            deploy_mocks()
-        contract = contract_type[-1]
-    else:
-        try:
-            contract_address = config["networks"][network.show_active()][contract_name]
-            contract = contract_type(contract_address)
-
-        except KeyError:
-            print(
-                f"{network.show_active()} address for {contract_name} not found. "
-                f"Perhaps you should add it to the config or deploy mocks?"
-            )
-    return contract
-
-
-def deploy_mocks():
-    """
-    Use this script if you want to deploy mocks to a testnet
-    """
-    pass
-
-
-def print_args_wrapped(fun):
-    def w_fun(*args, **kwargs):
-        print(*args)
-        # print(**kwargs) How to print this?
-        return fun(*args, **kwargs)
-
-    return w_fun
-
-
-def process_line_commands():
-    long_options = ["slippage=", "lending_fee="]
-    short_options = "s:lf:"
-    try:
-        arguments, values = getopt.getopt(sys.argv[1:], short_options, long_options)
-    except getopt.error as err:
-        # Output error, and return with an error code
-        print(str(err))
-        sys.exit(2)
