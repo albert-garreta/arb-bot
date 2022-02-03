@@ -1,6 +1,4 @@
 from web3 import Web3
-import numpy as np
-import sys, getopt
 from brownie.network.gas.strategies import GasNowStrategy
 from brownie import network, config
 import os
@@ -12,16 +10,17 @@ LOCAL_BLOCKCHAIN_ENVIRONMENTS = NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS + [
 ]
 ETH_NETWORKS = ["mainnet", "mainnet-fork", "kovan"]
 FTM_NETWORKS = ["ftm-main", "ftm-main-fork", "ftm-test"]
-MAIN_NETWORKS = ["ftm-main", "mainnet"]
+MAIN_NETWORKS = ["ftm-main", "mainnet"] 
 # TODO: integrate with the config file?
 
 passive_mode = False  # prevents making blockchain transactions
-rebooter_bot = False  # bot reboots automatically in case of an error
+rebooter_bot = True  # bot reboots automatically in case of an error
 force_actions = False
 verbose = True
+telegram_notifications = True
 
 # names and decimals are filled furing preprocessing
-token_names = []
+token_names = config["networks"][network.show_active()]["token_names"]
 decimals = []
 network_info = config["networks"][network.show_active()]
 dex_names = network_info["dexes"]["names"]
@@ -83,11 +82,12 @@ else:
 blocks_to_wait = 0
 time_between_epoch_due_checks = 0.1
 
-directory = f"./logs/{network.show_active()}/"
+token_pair = f"{token_names[0]}-{token_names[1]}"
+directory = f"./logs/{network.show_active()}/{token_pair}/"
 if not os.path.exists(directory):
     os.makedirs(directory)
-log_actions_path = directory + "_action_logs.txt"
-log_searches_path = directory + "_searches_logs.txt"
+log_actions_path = directory + f"action_logs.txt"
+log_searches_path = directory + f"searches_logs.txt"
 
 # set to an integer to set a constant gas price
 # NOTE: this is only used for the flashloan call of actor

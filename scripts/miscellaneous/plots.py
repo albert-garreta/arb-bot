@@ -48,11 +48,20 @@ RESERVE00, RESERVE10 = [11541179.030419603, 24067739.750079002]
 RESERVE01, RESERVE11 = [42033065.39828595, 87383634.83551401]
 RESERVE00, RESERVE10 = [11536786.090149844, 24026265.452085003]
 
-RESERVE01, RESERVE11 =[39658714.96042994, 75878131.847931]
-RESERVE00, RESERVE10 =[12025438.053268697, 23157867.74271]
+RESERVE01, RESERVE11 = [39658714.96042994, 75878131.847931]
+RESERVE00, RESERVE10 = [12025438.053268697, 23157867.74271]
+
+# RESERVE01, RESERVE11 = [10749301.949475199, 21647267.204137005]
+# RESERVE00, RESERVE10 = [41531458.45993912, 83620371.86791101]
+
+
+# RESERVE00, RESERVE10 = [2746.6223452757727, 2742.3830625500564]
+# RESERVE01, RESERVE11 = [95719120.08327186, 94784938.37744634]
+
 
 # RESERVE01, RESERVE11 =[38781318.59228811, 80733540.513515]
 # RESERVE00, RESERVE10 = [11380023.156515732, 23692960.259842]
+
 
 def plot_final_profits():
     # Observe how there is an optimal amount in!
@@ -62,10 +71,10 @@ def plot_final_profits():
     amounts_out = []
     arb_data = StateData()
     arb_data.reserves = [
-        mult_list_by_scalar([RESERVE01, RESERVE11], 1e18),
         mult_list_by_scalar([RESERVE00, RESERVE10], 1e18),
+        mult_list_by_scalar([RESERVE01, RESERVE11], 1e18),
     ]
-    arb_data.update_given_buy_dex(_buy_dex_index=1)
+    arb_data.update_given_buy_dex(_buy_dex_index=0)
 
     f = fix_parameters_of_function(get_net_profit_v3, (arb_data,))
 
@@ -79,6 +88,11 @@ def plot_final_profits():
     print(f(19e21) / 1e18)
     print(opt)
     print("Optimal amount", opt / 1e21, prof / 1e18)
+
+    buy_price = arb_data.get_dex_price(arb_data.reserves[0])
+    sell_price = arb_data.get_dex_price(arb_data.reserves[1])
+    ratio = buy_price / sell_price
+    print(f"Price ratios {ratio}, {1/ratio}")
     sbn.scatterplot(x=amount_in_rndn, y=amounts_out)
     plt.show()
 

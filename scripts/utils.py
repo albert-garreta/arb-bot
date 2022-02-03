@@ -58,6 +58,7 @@ def rebooter(function):
             return function(*args, **kwargs)
         except Exception as e:
             if bot_config.rebooter_bot:
+                print(f"\nREBOOTING due to the following exception:\n{e}\n")
                 return wrapped_fun(*args, **kwargs)
             else:
                 raise e

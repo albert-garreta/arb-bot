@@ -17,21 +17,22 @@ networks:
     token_names:
       - "WFTM"
       - "USDC"
+      #- "TOMB"
     token_addresses:
       # this is actually wFTM, but we keep the name weth for simplicity of code
       WFTM: "0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83" # WFTM
       USDC: "0x04068DA6C83AFCFA0e13ba15A6696662335D5B75" # USDC
       #token1: "0x049d68029688eAbF473097a2fC38ef61633A3C7A" #fUSDT
-      #token1: "0x6c021Ae822BEa943b2E66552bDe1D2696a53fbB7" #TOMB
+      TOMB: "0x6c021Ae822BEa943b2E66552bDe1D2696a53fbB7" #TOMB
       #token0: "0x74b23882a30290451A17c44f4F05243b6b58C76d" #WETH
       wrapped_main_token_address: "0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83"
     lending_pool_addresses_provider_address: "0x6c793c628Fe2b480c5e6FB7957dDa4b9291F9c9b"
     price_feed_address: "0xf4766552D15AE4d256Ad41B6cf2933482B0680dc"
     dexes:
       names:
-        # - "spookyswap"
+        - "spookyswap"
         - "spiritswap"
-        - "paintswap"
+        # - "paintswap"
       spookyswap:
         fee: 0.2
         approx_slippage: 0.0
@@ -50,10 +51,12 @@ networks:
   ftm-main-fork:
     token_names:
       - "WFTM"
-      - "USDC"
+      #- "USDC"
+      - "TOMB"
     token_addresses:
       WFTM: "0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83" # WFTM
       USDC: "0x04068DA6C83AFCFA0e13ba15A6696662335D5B75" # USDC
+      TOMB: "0x6c021Ae822BEa943b2E66552bDe1D2696a53fbB7" # USDC
       wrapped_main_token_address: "0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83"
     # usdt_address: "0x6c021Ae822BEa943b2E66552bDe1D2696a53fbB7" # TOMB
     # usdt_address: "0x4cdF39285D7Ca8eB3f090fDA0C069ba5F4145B37" # TSHARE

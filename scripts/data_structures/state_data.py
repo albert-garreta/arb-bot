@@ -1,6 +1,6 @@
 from socket import MSG_EOR
 import bot_config
-from scripts.data_structures.static_data import StaticData
+from scripts.data_structures.static_data import StaticData, dotdict
 from scripts.prices import get_net_profit_v3, get_dex_amount_in
 from scripts.utils import (
     log,
@@ -11,6 +11,7 @@ from scripts.utils import (
 import numpy as np
 from scipy.optimize import minimize_scalar
 from brownie import chain
+import telegram_send
 
 
 class StateData(StaticData):
@@ -95,9 +96,6 @@ class StateData(StaticData):
         sell_dex_data.slippage = self.slippage_sell_dex
         return sell_dex_data
 
-    # def get_profit_ratio(self):
-    #     return 100 * (self.net_profit / self.optimal_borrow_amount - 1)
-
     def passes_requirements(self):
         requirement = True
         # profit_ratio = self.get_profit_ratio()
@@ -155,7 +153,7 @@ class StateData(StaticData):
         # TODO: create separate class for logging
         price_buy_dex = self.get_dex_price(self.reserves_buying_dex)
         price_sell_dex = self.get_dex_price(self.reserves_selling_dex)
-        msg = ""
+        msg = f"{self.token_names}\n"
         # Too expenive: msg += f"Block number: {get_latest_block_number()}\n"
         msg += f"Reserves buying dex: {mult_list_by_scalar(self.reserves_buying_dex,1e-18)}\n"
         msg += f"Reserves selling dex: {mult_list_by_scalar(self.reserves_selling_dex,1e-18)}\n"
@@ -173,7 +171,10 @@ class StateData(StaticData):
         print(self.summary_message)
 
     def log_summary(self, path):
-        log(self.summary_message, path)
+        msg = self.summary_message
+        if bot_config.telegram_notifications:
+            telegram_send.send(messages=[msg])
+        log(msg, path)
 
     def print_and_log_summary(self, path):
         self.print_summary()

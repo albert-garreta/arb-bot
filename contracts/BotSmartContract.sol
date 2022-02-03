@@ -26,21 +26,34 @@ contract BotSmartContract is Ownable, IUniswapV2Callee {
         uint256 buyDexFee;
     }
 
-    CallbackData internal data;
-
-    event Log(
+    event LogBalancesAndDebts(
         uint256 indexed contractBalToken0,
         uint256 indexed expectedAmountTkn0ToReturn,
         uint256 indexed actualAmountTkn0ToReturn
     );
-
-    event Log2(uint256 amountTkn1ToBorrow);
 
     constructor(
         address[] memory _routerAddresses,
         address[] memory _factoryAddresses,
         address[] memory _tokenAddresses
     ) {
+        modifyStateVariables(
+            _routerAddresses,
+            _factoryAddresses,
+            _tokenAddresses
+        );
+    }
+
+    function modifyStateVariables(
+        address[] memory _routerAddresses,
+        address[] memory _factoryAddresses,
+        address[] memory _tokenAddresses
+    ) public onlyOwner {
+        routers = new IUniswapV2Router02[](0);
+        factories = new IUniswapV2Factory[](0);
+        pairs = new IUniswapV2Pair[](0);
+        tokens = new IERC20[](0);
+
         for (uint8 i = 0; i < _routerAddresses.length; i++) {
             routers.push(IUniswapV2Router02(_routerAddresses[i]));
             factories.push(IUniswapV2Factory(_factoryAddresses[i]));
@@ -53,39 +66,39 @@ contract BotSmartContract is Ownable, IUniswapV2Callee {
         }
     }
 
-    //TODO: what is this for?
+    //TODO: Is this necessary?
     receive() external payable {}
 
     function requestFlashLoanAndAct(CallbackData memory _data) public {
         bytes memory params = abi.encode(_data);
-        // (uint112 _reserve0, uint112 _reserve1, ) = pairs[_data.buyDexIndex]
-        //     .getReserves();
+        _data.orderReversions[_data.buyDexIndex]
+            ? actWithOrderReversed(_data, params)
+            : actWithExpectedOrder(_data, params);
+        // sendAllFundsToOwner(msg.sender);
+    }
 
-        if (!_data.orderReversions[_data.buyDexIndex]) {
-            require(
-                address(tokens[1]) == pairs[_data.buyDexIndex].token1(),
-                "Incorrect token orders"
-            );
-            emit Log2(_data.amountTkn1ToBorrow);
-            pairs[_data.buyDexIndex].swap(
-                0,
-                _data.amountTkn1ToBorrow,
-                address(this),
-                params
-            );
-        } else {
-            require(
-                address(tokens[1]) == pairs[_data.buyDexIndex].token0(),
-                "Incorrect token orders"
-            );
-            pairs[_data.buyDexIndex].swap(
-                _data.amountTkn1ToBorrow,
-                0,
-                address(this),
-                params
-            );
-        }
-        sendAllFundsToOwner(msg.sender);
+    function actWithExpectedOrder(
+        CallbackData memory _data,
+        bytes memory _params
+    ) internal {
+        pairs[_data.buyDexIndex].swap(
+            0, // amount0Out
+            _data.amountTkn1ToBorrow, // amount1Out
+            address(this), // sender
+            _params
+        );
+    }
+
+    function actWithOrderReversed(
+        CallbackData memory _data,
+        bytes memory _params
+    ) internal {
+        pairs[_data.buyDexIndex].swap(
+            _data.amountTkn1ToBorrow, // amount0Out
+            0, // amount1Out
+            address(this), // sender
+            _params
+        );
     }
 
     function pancakeCall(
@@ -106,38 +119,122 @@ contract BotSmartContract is Ownable, IUniswapV2Callee {
         uint256 _amount1,
         bytes calldata _data
     ) public {
-        data = abi.decode(_data, (CallbackData));
+        CallbackData memory data = abi.decode(_data, (CallbackData));
 
-        bool reversedOrder = data.orderReversions[data.buyDexIndex];
-        if (reversedOrder) {
-            (_amount0, _amount1) = (_amount1, _amount0);
-        }
-
+        (_amount0, _amount1) = arrangeAmounts(data, _amount0, _amount1);
         uniswapV2CallCheckPreRequisites(_sender, data);
         uint256 amountTkn0Out = normalSwap(_amount1, data);
-
-        uint256[] memory balances = new uint256[](2);
-        balances[0] = tokens[0].balanceOf(address(this));
-        balances[1] = tokens[1].balanceOf(address(this));
-
-        emit Log(balances[0], data.expectedAmountTkn0ToReturn, 0);
-        // //TODO: check debug tools in brownie
         uint256 actualAmountTkn0ToReturn = computeActualAmountTkn0ToReturn(
             data.amountTkn1ToBorrow,
             data
         );
-        emit Log(
-            balances[0],
+        emit LogBalancesAndDebts(
+            tokens[0].balanceOf(address(this)),
             data.expectedAmountTkn0ToReturn,
             actualAmountTkn0ToReturn
         );
-        // uniswapV2CallCheckPostRequisites(
-        //     amountTkn0Out,
-        //     actualAmountTkn0ToReturn
-        // );
+        uniswapV2CallCheckPostRequisites(actualAmountTkn0ToReturn);
+        returnFundsToPair(actualAmountTkn0ToReturn, data.buyDexIndex);
+    }
 
-        //returnFundsToPair(actualAmountTkn0ToReturn, data.buyDexIndex);
-        returnFundsToPair(data.expectedAmountTkn0ToReturn, data.buyDexIndex);
+    function normalSwap(uint256 _amountBorrowed, CallbackData memory _data)
+        public
+        returns (uint256)
+    {
+        tokens[1].approve(
+            address(routers[_data.sellDexIndex]),
+            _amountBorrowed
+        );
+
+        address[] memory path = new address[](2);
+        path[0] = _data.tokenAddresses[1];
+        path[1] = _data.tokenAddresses[0];
+
+        uint256[] memory amounts = routers[_data.sellDexIndex]
+            .swapExactTokensForTokens(
+                _amountBorrowed,
+                uint256(0),
+                path,
+                address(this),
+                block.timestamp
+            );
+        return amounts[0];
+    }
+
+    function arrangeAmounts(
+        CallbackData memory _data,
+        uint256 _amount0,
+        uint256 _amount1
+    ) internal returns (uint256, uint256) {
+        bool reversedOrder = _data.orderReversions[_data.buyDexIndex];
+        return reversedOrder ? (_amount1, _amount0) : (_amount0, _amount1);
+    }
+
+    function computeActualAmountTkn0ToReturn(
+        uint256 _amountTkn1Borrwed,
+        CallbackData memory _data
+    ) internal view returns (uint256) {
+        // Due to price variability, the expected amount of Tkn0 to return may be different than the one computed
+        // before interacting with the smartcontract. Hence we recalculate it here
+        (uint256 reserveTkn0, uint256 reserveTkn1) = getOrderedReserves(
+            pairs[_data.buyDexIndex],
+            _data.orderReversions[_data.buyDexIndex]
+        );
+        return
+            getAmountIn(
+                _amountTkn1Borrwed, //amountOut
+                reserveTkn0, // reserveIn
+                reserveTkn1, // reserveOut
+                _data.buyDexFee
+            );
+    }
+
+    // copied from UniswapV2Library
+    function getAmountIn(
+        uint256 amountOut,
+        uint256 reserveIn,
+        uint256 reserveOut,
+        uint256 fee
+    ) internal pure returns (uint256 amountIn) {
+        require(amountOut > 0, "UniswapV2Library: INSUFFICIENT_OUTPUT_AMOUNT");
+        require(
+            reserveIn > 0 && reserveOut > 0,
+            "UniswapV2Library: INSUFFICIENT_LIQUIDITY"
+        );
+        uint256 numerator = reserveIn * amountOut * 1000;
+        uint256 denominator = (reserveOut - amountOut) * fee;
+        amountIn = (numerator / denominator) + 1;
+    }
+
+    function returnFundsToPair(
+        uint256 expectedAmountTkn0ToReturn,
+        uint8 _buyDexIndex
+    ) internal {
+        tokens[0].transfer(
+            address(pairs[_buyDexIndex]),
+            expectedAmountTkn0ToReturn
+        );
+    }
+
+    function sendAllFundsToOwner() public onlyOwner {
+        tokens[0].transfer(msg.sender, tokens[0].balanceOf(address(this)));
+    }
+
+    function getOrderedReserves(IUniswapV2Pair _pair, bool _orderReversed)
+        internal
+        view
+        returns (uint256, uint256)
+    {
+        // The method getReserves() from UniswapPairs need not return the desired order of reserves
+        (
+            uint256 reserveTkn0,
+            uint256 reserveTkn1,
+            uint32 blockTimestampLast
+        ) = _pair.getReserves();
+        return
+            _orderReversed
+                ? (reserveTkn1, reserveTkn0)
+                : (reserveTkn0, reserveTkn1);
     }
 
     function uniswapV2CallCheckPreRequisites(
@@ -156,163 +253,18 @@ contract BotSmartContract is Ownable, IUniswapV2Callee {
             tokens[0].balanceOf(address(this)) == 0,
             "The token0 balance should be 0 here"
         );
-
         require(
             _data.amountTkn1ToBorrow == tokens[1].balanceOf(address(this)),
             "Not enough token1 received"
         );
     }
 
-    function uniswapV2CallCheckPostRequisites(
-        uint256 amountTkn0Out,
-        uint256 actualAmountTkn0ToReturn
-    ) public {
+    function uniswapV2CallCheckPostRequisites(uint256 actualAmountTkn0ToReturn)
+        public
+    {
         require(
-            amountTkn0Out > actualAmountTkn0ToReturn + 1000000,
-            "Non-positive net profit accrued"
-        );
-        require(
-            tokens[0].balanceOf(address(this)) >
-                actualAmountTkn0ToReturn + 1000000,
+            tokens[0].balanceOf(address(this)) > actualAmountTkn0ToReturn,
             "Not enough token0s to return"
         );
-    }
-
-    function returnFundsToPair(
-        uint256 expectedAmountTkn0ToReturn,
-        uint8 _buyDexIndex
-    ) internal {
-        tokens[0].transfer(
-            address(pairs[_buyDexIndex]),
-            //_actualAmountTkn0ToReturn + 1000
-            expectedAmountTkn0ToReturn + 1000
-        );
-        // tokens[0].transfer(
-        //     address(pairs[_buyDexIndex]),
-        //     tokens[0].balanceOf(address(this))
-        // );
-        // tokens[1].transfer(
-        //     address(pairs[_buyDexIndex]),
-        //     tokens[1].balanceOf(address(this))
-        // );
-        // require(
-        //     tokens[0].balanceOf(address(this)) == 0 &&
-        //         tokens[1].balanceOf(address(this)) == 0,
-        //     "Something went wront while transfering tokens back to the pair"
-        // );
-
-        // uint256 balance0 = IERC20(tokens[0]).balanceOf(
-        //     address(pairs[_buyDexIndex])
-        // );
-        // uint256 balance1 = IERC20(tokens[1]).balanceOf(
-        //     address(pairs[_buyDexIndex])
-        // );
-        //
-        // uint256 amount0In = balance0 > _reserve0 - _amount0Out
-        //     ? balance0 - (_reserve0 - _amount0Out)
-        //     : 0;
-        // uint256 amount1In = balance1 > _reserve1 - _amount1Out
-        //     ? balance1 - (_reserve1 - _amount1Out)
-        //     : 0;
-        // emit pairSwapEvent(_amount0In, _amount1In, balancesAdjusted);
-        //
-        // uint256 balance0Adjusted = balance0 * (1000) - 3 * (_amount0In);
-        // uint256 balance1Adjusted = balance1 * (1000) - 3 * (_amount1In);
-        //
-        // balancesAdjusted.push(balance0Adjusted);
-        // balancesAdjusted.push(balance1Adjusted);
-        // emit pairSwapEvent(_amount0In, _amount1In, balancesAdjusted);
-    }
-
-    function sendAllFundsToOwner(address _sender) internal {
-        tokens[0].transfer(_sender, tokens[0].balanceOf(address(this)));
-    }
-
-    function normalSwap(uint256 _amountBorrowed, CallbackData memory _data)
-        public
-        returns (uint256)
-    {
-        tokens[1].approve(
-            address(routers[_data.sellDexIndex]),
-            _amountBorrowed + 100000
-        );
-
-        address[] memory path = new address[](2);
-        path[0] = _data.tokenAddresses[1];
-        path[1] = _data.tokenAddresses[0];
-
-        uint256[] memory amounts = routers[_data.sellDexIndex]
-            .swapExactTokensForTokens(
-                _amountBorrowed,
-                uint256(0),
-                path,
-                address(this),
-                block.timestamp
-            );
-
-        require(
-            tokens[1].balanceOf(address(this)) == 0,
-            "We should have no token1s here"
-        );
-
-        return amounts[0];
-    }
-
-    function computeActualAmountTkn0ToReturn(
-        uint256 _amountTkn1Borrwed,
-        CallbackData memory _data
-    ) internal view returns (uint256) {
-        // Due to price variability, the expected amount of Tkn0 to return may be different than the one computed
-        // before interacting with the smartcontract. Hence we recalculate it here
-        (uint256 reserveTkn0, uint256 reserveTkn1) = getOrderedReserves(
-            pairs[_data.buyDexIndex],
-            data.orderReversions[_data.buyDexIndex]
-        );
-
-        // careful on the order of reserves here: reserveIn is the reserve of token1 because we are selling
-        return
-            getAmountIn(
-                _amountTkn1Borrwed,
-                reserveTkn0,
-                reserveTkn1,
-                _data.buyDexFee
-            );
-    }
-
-    function getOrderedReserves(IUniswapV2Pair _pair, bool _orderReversed)
-        internal
-        view
-        returns (uint256, uint256)
-    {
-        // The method getReserves() from UniswapPairs need not return the desired order of reserves
-        // TODO: is the order, however, constant? If not, then I cannot use the attribute order_reversions
-        // from CallbackData
-        (
-            uint256 reserveTkn0,
-            uint256 reserveTkn1,
-            uint32 blockTimestampLast
-        ) = _pair.getReserves();
-        if (_orderReversed) {
-            return (reserveTkn1, reserveTkn0);
-        } else {
-            return (reserveTkn0, reserveTkn1);
-        }
-    }
-
-    // copied from UniswapV2Library
-    function getAmountIn(
-        uint256 amountOut,
-        uint256 reserveIn,
-        uint256 reserveOut,
-        uint256 fee
-    ) internal pure returns (uint256 amountIn) {
-        require(amountOut > 0, "UniswapV2Library: INSUFFICIENT_OUTPUT_AMOUNT");
-        require(
-            reserveIn > 0 && reserveOut > 0,
-            "UniswapV2Library: INSUFFICIENT_LIQUIDITY"
-        );
-        uint256 numerator = reserveIn * amountOut * 1000;
-        uint256 denominator = (reserveOut - amountOut) * fee;
-        amountIn = (numerator / denominator) + 1;
     }
 }

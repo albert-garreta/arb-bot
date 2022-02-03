@@ -8,6 +8,7 @@ from scripts.utils import (
     rebooter,
     get_latest_block_number,
     is_testing_mode,
+    log,
 )
 from scripts.data_structures.state_data import StateData
 import bot_config
@@ -59,6 +60,9 @@ class Bot(object):
         self.log_pre_action()
         try:
             tx = self.flashloan_and_swap()
+            tx.wait(1)
+            tx = self.retrieve_profits()
+            tx.wait(1)
             self.log_post_action()
             return tx
         except Exception as e:
@@ -105,6 +109,10 @@ class Bot(object):
         print(self.bot_smartcontract.pairs(0))
         print(self.bot_smartcontract.pairs(1))
         print(get_wallet_balances(get_account(), self.arb_data.tokens))
+        return flashloan_args
+
+    def retrieve_profits(self):
+        return self.bot_smartcontract.sendAllFundsToOwner({"from": get_account()})
 
     def get_balances(self, address):
         return [
@@ -118,6 +126,8 @@ class Bot(object):
 
     def log_post_action(self):
         comment = f"Success! Flashloan and swaps completed\n"
+        log(comment)
+
         self.print_log_summary_with_balances_and_comment(comment)
 
     def log_failure(self, _exception):
