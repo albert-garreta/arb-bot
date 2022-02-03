@@ -7,10 +7,13 @@ NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS = ["development", "ganache"]
 LOCAL_BLOCKCHAIN_ENVIRONMENTS = NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS + [
     "mainnet-fork",
     "ftm-main-fork",
+    "plygon-main-fork",
 ]
 ETH_NETWORKS = ["mainnet", "mainnet-fork", "kovan"]
 FTM_NETWORKS = ["ftm-main", "ftm-main-fork", "ftm-test"]
-MAIN_NETWORKS = ["ftm-main", "mainnet"] 
+MATIC_NETWORKS=  ['polygon-main', "polygon-main-fork"]
+AVAX_NETWORKS=  ['avax-main', "avax-main-fork"]
+MAIN_NETWORKS = ["ftm-main", "mainnet", "polygon-main"]
 # TODO: integrate with the config file?
 
 passive_mode = False  # prevents making blockchain transactions
@@ -61,20 +64,26 @@ max_value_of_flashloan = 50_000e18
 
 min_profit_ratio = 0.01
 if network.show_active() in FTM_NETWORKS:
-    min_net_profit = 1e18 * 3  # WFTM
-elif network.show_active() in ETH_NETWORKS:
-    min_net_profit = 1e18 * 0.001
-else:
-    raise Exception
-
-if network.show_active() in FTM_NETWORKS:
+    gas_strategy = "1200 gwei"  # GasNowStrategy("fast")
+    min_net_profit = 1e18 * 1  # WFTM
     forced_tkn0_to_buy = 1e18 * 3.5 * 100 / lending_pool_fee
     forced_tkn1_to_sell = 1e18 * 7.7 * 100 / lending_pool_fee
 elif network.show_active() in ETH_NETWORKS:
+    min_net_profit = 1e18 * 0.001
     forced_tkn0_to_buy = 0.001e18
     forced_tkn1_to_sell = 3e18
+    gas_strategy = 50
+elif network.show_active() in MATIC_NETWORKS:
+    min_net_profit = 1e18 * 1.4
+    gas_strategy = "150 gwei"
+    forced_tkn0_to_buy = 1e18 * 3.5 * 100 / lending_pool_fee
+    forced_tkn1_to_sell = 1e18 * 7.7 * 100 / lending_pool_fee
+elif network.show_active() in AVAX_NETWORKS:
+    min_net_profit = 1e18 * 0.02
+    gas_strategy = ''
 else:
     raise Exception
+
 
 
 # Number of blocks to wait between epochs. In fantom a block takes around 0.85s to
@@ -92,10 +101,7 @@ log_searches_path = directory + f"searches_logs.txt"
 # set to an integer to set a constant gas price
 # NOTE: this is only used for the flashloan call of actor
 # gas_strategy = GasNowStrategy("fast")
-if network.show_active() in FTM_NETWORKS:
-    gas_strategy = "1200 gwei"  # GasNowStrategy("fast")
-elif network.show_active() in ETH_NETWORKS:
-    gas_strategy = 50
+
 # this is based on a successful run of the flashloan call
 gas_limit = 1_800_000
 

@@ -123,7 +123,7 @@ contract BotSmartContract is Ownable, IUniswapV2Callee {
 
         (_amount0, _amount1) = arrangeAmounts(data, _amount0, _amount1);
         uniswapV2CallCheckPreRequisites(_sender, data);
-        uint256 amountTkn0Out = normalSwap(_amount1, data);
+        normalSwap(_amount1, data);
         uint256 actualAmountTkn0ToReturn = computeActualAmountTkn0ToReturn(
             data.amountTkn1ToBorrow,
             data
@@ -139,7 +139,6 @@ contract BotSmartContract is Ownable, IUniswapV2Callee {
 
     function normalSwap(uint256 _amountBorrowed, CallbackData memory _data)
         public
-        returns (uint256)
     {
         tokens[1].approve(
             address(routers[_data.sellDexIndex]),
@@ -158,14 +157,13 @@ contract BotSmartContract is Ownable, IUniswapV2Callee {
                 address(this),
                 block.timestamp
             );
-        return amounts[0];
     }
 
     function arrangeAmounts(
         CallbackData memory _data,
         uint256 _amount0,
         uint256 _amount1
-    ) internal returns (uint256, uint256) {
+    ) internal pure returns (uint256, uint256) {
         bool reversedOrder = _data.orderReversions[_data.buyDexIndex];
         return reversedOrder ? (_amount1, _amount0) : (_amount0, _amount1);
     }
@@ -212,7 +210,7 @@ contract BotSmartContract is Ownable, IUniswapV2Callee {
     ) internal {
         tokens[0].transfer(
             address(pairs[_buyDexIndex]),
-            expectedAmountTkn0ToReturn
+            expectedAmountTkn0ToReturn + 100
         );
     }
 
@@ -226,11 +224,7 @@ contract BotSmartContract is Ownable, IUniswapV2Callee {
         returns (uint256, uint256)
     {
         // The method getReserves() from UniswapPairs need not return the desired order of reserves
-        (
-            uint256 reserveTkn0,
-            uint256 reserveTkn1,
-            uint32 blockTimestampLast
-        ) = _pair.getReserves();
+        (uint256 reserveTkn0, uint256 reserveTkn1, ) = _pair.getReserves();
         return
             _orderReversed
                 ? (reserveTkn1, reserveTkn0)
@@ -240,7 +234,7 @@ contract BotSmartContract is Ownable, IUniswapV2Callee {
     function uniswapV2CallCheckPreRequisites(
         address _sender,
         CallbackData memory _data
-    ) public {
+    ) public view {
         require(_sender == address(this), "Not from this contract");
         require(
             msg.sender ==
@@ -261,6 +255,7 @@ contract BotSmartContract is Ownable, IUniswapV2Callee {
 
     function uniswapV2CallCheckPostRequisites(uint256 actualAmountTkn0ToReturn)
         public
+        view
     {
         require(
             tokens[0].balanceOf(address(this)) > actualAmountTkn0ToReturn,

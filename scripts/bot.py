@@ -61,12 +61,17 @@ class Bot(object):
         try:
             tx = self.flashloan_and_swap()
             tx.wait(1)
-            tx = self.retrieve_profits()
-            tx.wait(1)
-            self.log_post_action()
+            # TODO: clean this tx logging up
+            # print(tx.info())
+            self.print_log_summary_with_balances_and_comment(tx.info())
+            tx2 = self.retrieve_profits()
+            tx2.wait(1)
+            # TODO: improve the way things are logged around here
+            self.log_post_action(tx.info())
             return tx
         except Exception as e:
             self.log_failure(e)
+            raise e
 
     def act_test(self):
         # Same as act but it halts if flashloand_and_swap fails
@@ -121,18 +126,17 @@ class Bot(object):
         ]
 
     def log_pre_action(self):
-        comment = f"Requesting flashloan and swapping...\n"
-        self.print_log_summary_with_balances_and_comment(comment)
+        comment = f"\n\n\nRequesting flashloan and swapping...\n"
+        print(comment)
+        log(comment, bot_config.log_actions_path)
 
-    def log_post_action(self):
-        comment = f"Success! Flashloan and swaps completed\n"
-        log(comment)
+    def log_post_action(self, msg=""):
+        msg = f"Success! Flashloan and swaps completed\n" + msg
+        self.print_log_summary_with_balances_and_comment(msg)
 
-        self.print_log_summary_with_balances_and_comment(comment)
-
-    def log_failure(self, _exception):
+    def log_failure(self, _exception, msg=""):
         msg = "Operation failed\n"
-        msg += f"The exception is {_exception}\n\n"
+        msg += f"The exception is\n{_exception}\n" + msg
         self.print_log_summary_with_balances_and_comment(msg)
 
     def print_log_summary_with_balances_and_comment(self, comment=""):
