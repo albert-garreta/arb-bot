@@ -1,7 +1,7 @@
 from socket import MSG_EOR
 import bot_config
-from scripts.data_structures.static_data import StaticData, dotdict
-from scripts.prices import get_net_profit_v3, get_dex_amount_in
+from scripts.data_structures.static_data import dotdict, StaticPairData
+from scripts.prices import get_net_profit_v3, get_dex_amount_in, get_dex_amount_out
 from scripts.utils import (
     log,
     mult_list_by_scalar,
@@ -14,10 +14,43 @@ from brownie import chain
 import telegram_send
 
 
-class StateData(StaticData):
-    # TODO: consider changing these class names
+class DataOrganizer(dotdict):
     def __init__(self):
-        super().__init__()
+        self.token_pair_to_pair_data = {}
+        self.list_index_pairs = []
+        num_tokens = len(bot_config.token_names)
+        for index0 in range(num_tokens):
+            for index1 in range(index0 + 1, num_tokens):
+                self.set_up_state_data(index0, index1)
+
+    def set_up_state_data(self, index0, index1):
+        try:
+            print(
+                f"Setting up data controllers for the token pair {index0}_{index1}..."
+            )
+            str_pair = get_pair_to_str_form(index0, index1)
+            self.token_pair_to_pair_data[str_pair] = StateData(index0, index1)
+            self.list_index_pairs.append([index0, index1])
+            print("Set up done")
+        except Exception as e:
+            print("Setting up failed. Ignoring pair.")
+            print("The exception was:")
+            print(e)
+
+    def get_pair_data(self, index0, index1):
+        str_pair = get_pair_to_str_form(index0, index1)
+        return self.token_pair_to_pair_data[str_pair]
+
+
+def get_pair_to_str_form(index0, index1):
+    return str(index0) + "_" + str(index1)
+
+
+class StateData(StaticPairData):
+    # TODO: consider changing these class names
+    def __init__(self, index0, index1):
+        super().__init__(index0, index1)
+        self.num_dexes = 2
         self.buy_dex_index = None
         self.sell_dex_index = None
         self.reserves_buying_dex = None
@@ -60,19 +93,31 @@ class StateData(StaticData):
 
         res = minimize_scalar(
             reverse_scalar_fun(self._profit_function),
-            bounds=(0, self.max_value_of_flashloan),
+            bounds=bot_config.loan_bounds,
             method="bounded",
         )
         return res.x
 
-    def update_opt_borrow_amt_and_net_profit_and_amt_to_return(
+    def update_optimal_amounts_net_profit_and_more(
         self, optimal_borrow_amount, net_profit
     ):
         self.optimal_borrow_amount = optimal_borrow_amount
         self.net_profit = net_profit
+        # If the optimal_borrow_amount is negative, we want to record a net_profit of 0.
+        # Otherwise the multiplier is just 1 and we get the unaltered net_profit
+        self.net_profit_relu = net_profit * (1 + np.sign(optimal_borrow_amount)) / 2
         self.amount_to_return = get_dex_amount_in(
             optimal_borrow_amount, self.get_buy_dex_data()
         )
+        # self.price_buy_dex = get_dex_amount_out(
+        #     optimal_borrow_amount, self.get_buy_dex_data()
+        # )
+        # self.price_sell_dex = get_dex_amount_out(
+        #     optimal_borrow_amount, self.get_sell_dex_data()
+        # )
+        self.price_buy_dex = self.get_dex_price(self.reserves_buying_dex)
+        self.price_sell_dex = self.get_dex_price(self.reserves_buying_dex)
+        self.price_ratio = self.price_buy_dex / self.price_sell_dex
 
     def get_dex_data(self, _buying):
         if _buying:
@@ -98,11 +143,15 @@ class StateData(StaticData):
 
     def passes_requirements(self):
         requirement = True
-        # profit_ratio = self.get_profit_ratio()
-        # requirement = profit_ratio > bot_config.min_profit_ratio
-        requirement = requirement and self.net_profit > bot_config.min_net_profit
+
+        # TODO: Is it 1e18 or 10**decimals[0]?
+        requirement = (
+            requirement
+            and self.net_profit / 1e18 > self.min_net_profit
+        )
         requirement = requirement and self.optimal_borrow_amount > 0
         requirement = requirement or bot_config.force_actions
+        # print(self.net_profit / (10 ** self.decimals[0]),self.decimals[0], self.min_net_profit, self.optimal_borrow_amount)
         # requirement = requirement and (not bot_config.passive_mode)
         return requirement
 
@@ -145,23 +194,19 @@ class StateData(StaticData):
         net_profit = _best_metrics["net_profit"]
         borrow_amount = _best_metrics["borrow_amount"]
         self.update_given_buy_dex(buy_dex_index)
-        self.update_opt_borrow_amt_and_net_profit_and_amt_to_return(
-            borrow_amount, net_profit
-        )
+        self.update_optimal_amounts_net_profit_and_more(borrow_amount, net_profit)
 
     def set_summary_message(self, addendum=""):
         # TODO: create separate class for logging
-        price_buy_dex = self.get_dex_price(self.reserves_buying_dex)
-        price_sell_dex = self.get_dex_price(self.reserves_selling_dex)
         msg = f"{self.token_names}\n"
         # Too expenive: msg += f"Block number: {get_latest_block_number()}\n"
         msg += f"Reserves buying dex: {mult_list_by_scalar(self.reserves_buying_dex,1e-18)}\n"
         msg += f"Reserves selling dex: {mult_list_by_scalar(self.reserves_selling_dex,1e-18)}\n"
-        msg += f"Price buying dex: {price_buy_dex}\n"
-        msg += f"Price selling dex: {price_sell_dex}\n"
-        msg += f"Price ratio: {price_buy_dex/price_sell_dex}\n"
+        msg += f"Price buying dex: {self.price_buy_dex}\n"
+        msg += f"Price selling dex: {self.price_sell_dex}\n"
+        msg += f"Price ratio: {self.price_ratio}\n"
         msg += f"Buying dex index: {self.buy_dex_index}\n"
-        msg += f"Net profit: {self.net_profit/1e18}\n"
+        msg += f"Net profit: {round(self.net_profit_relu/1e18,6)} ({round(self.net_profit/1e18,6)}) (Min: {round(self.min_net_profit,6)})\n"
         msg += f"Optimal borrow amount: {self.optimal_borrow_amount/1e18}\n"
         msg += addendum
         msg += "\n"

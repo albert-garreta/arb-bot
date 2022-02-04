@@ -66,14 +66,27 @@ networks:
       - "WFTM"
       - "USDC"
       #- "TOMB"
+      #- "SPIRIT"
+      - "DAI"
+      #- "SPELL"
+      #- "SPIRIT"
+      - "WETH"
     token_addresses:
-      # this is actually wFTM, but we keep the name weth for simplicity of code
       WFTM: "0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83" # WFTM
       USDC: "0x04068DA6C83AFCFA0e13ba15A6696662335D5B75" # USDC
-      #token1: "0x049d68029688eAbF473097a2fC38ef61633A3C7A" #fUSDT
-      TOMB: "0x6c021Ae822BEa943b2E66552bDe1D2696a53fbB7" #TOMB
-      #token0: "0x74b23882a30290451A17c44f4F05243b6b58C76d" #WETH
-      wrapped_main_token_address: "0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83"
+      TOMB: "0x6c021Ae822BEa943b2E66552bDe1D2696a53fbB7" # USDC
+      SPIRIT: "0x5cc61a78f164885776aa610fb0fe1257df78e59b" # USDC
+      DAI: "0x8d11ec38a3eb5e956b052f67da8bdc9bef8abf3e" # USDC
+      SPELL: "0x468003b688943977e6130f4f68f23aad939a1040"
+      WETH: "0x74b23882a30290451a17c44f4f05243b6b58c76d"
+    coingecko_ids:
+      - "fantom" # WFTM
+      - "usd-coin" # USDC
+      - "tomb" # USDC
+     # - "spiritswap" # USDC
+      - "dai" # USDC
+     # - "spell-token"
+      - "ethereum"
     lending_pool_addresses_provider_address: "0x6c793c628Fe2b480c5e6FB7957dDa4b9291F9c9b"
     price_feed_address: "0xf4766552D15AE4d256Ad41B6cf2933482B0680dc"
     dexes:
@@ -99,15 +112,29 @@ networks:
   ftm-main-fork:
     token_names:
       - "WFTM"
-      #- "USDC"
-      - "TOMB"
+      - "USDC"
+      #- "TOMB"
+      #- "SPIRIT"
+     # - "DAI"
+     # - "SPELL"
+     # - "SPIRIT"
+     # - "WETH"
     token_addresses:
       WFTM: "0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83" # WFTM
       USDC: "0x04068DA6C83AFCFA0e13ba15A6696662335D5B75" # USDC
       TOMB: "0x6c021Ae822BEa943b2E66552bDe1D2696a53fbB7" # USDC
-      wrapped_main_token_address: "0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83"
-    # usdt_address: "0x6c021Ae822BEa943b2E66552bDe1D2696a53fbB7" # TOMB
-    # usdt_address: "0x4cdF39285D7Ca8eB3f090fDA0C069ba5F4145B37" # TSHARE
+      SPIRIT: "0x5cc61a78f164885776aa610fb0fe1257df78e59b" # USDC
+      DAI: "0x8d11ec38a3eb5e956b052f67da8bdc9bef8abf3e" # USDC
+      SPELL: "0x468003b688943977e6130f4f68f23aad939a1040"
+      WETH: "0x74b23882a30290451a17c44f4f05243b6b58c76d"
+    coingecko_ids:
+      - "fantom" # WFTM
+      - "usd-coin" # USDC
+      - "tomb" # USDC
+      #- "spiritswap" # USDC
+      - "dai" # USDC
+     # - "spell-token"
+      - "ethereum"
     lending_pool_addresses_provider_address: "0x6c793c628Fe2b480c5e6FB7957dDa4b9291F9c9b"
     price_feed_address: "0xf4766552D15AE4d256Ad41B6cf2933482B0680dc"
     dexes:
@@ -154,11 +181,20 @@ networks:
     token_names:
       - "WAVAX"
       - "USDC"
-      #- "TOMB"
+      - "WETH"
     token_addresses:
       # this is actually wFTM, but we keep the name weth for simplicity of code
       WAVAX: "0xb31f66aa3c1e785363f0875a1b74e27b85fd66c7" # WFTM
       USDC: "0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e" # USDC
+      WETH: "0x49d5c2bdffac6ce2bfdb6640f4f80f226bc10bab"
+      WBTC: "0x50b7545627a5162f82a992c33b87adc75187b218"
+      DAI: "0xd586e7f844cea2f87f50152665bcbc2c279d8d70"
+    coingecko_ids:
+      - "avalanche-2"
+      - "usd-coin"
+      - "ethereum"
+      - "bitcoin"
+      - "dai"
     dexes:
       names:
         - "traderjoe"
@@ -176,13 +212,17 @@ networks:
         uniswap_factory_address: "0xefa94DE7a4656D787667C749f7E1223D71E9FD88"
   avax-main-fork:
     token_names:
-      - "WAVAX"
-      - "USDC"
-      #- "TOMB"
-    token_addresses:
-      # this is actually wFTM, but we keep the name weth for simplicity of code
       WAVAX: "0xb31f66aa3c1e785363f0875a1b74e27b85fd66c7" # WFTM
       USDC: "0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e" # USDC
+      WETH: "0x49d5c2bdffac6ce2bfdb6640f4f80f226bc10bab"
+      WBTC: "0x50b7545627a5162f82a992c33b87adc75187b218"
+      DAI: "0xd586e7f844cea2f87f50152665bcbc2c279d8d70"
+    coingecko_ids:
+      - "avalanche-2"
+      - "usd-coin"
+      - "ethereum"
+      - "bitcoin"
+      - "dai"
     dexes:
       names:
         - "traderjoe"
@@ -198,7 +238,3 @@ networks:
         approx_slippage: 0.0
         swap_router_V2_address: "0xE54Ca86531e17Ef3616d22Ca28b0D458b6C89106"
         uniswap_factory_address: "0xefa94DE7a4656D787667C749f7E1223D71E9FD88"
-
-
-
-        

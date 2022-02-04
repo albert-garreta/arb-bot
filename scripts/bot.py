@@ -10,11 +10,12 @@ from scripts.utils import (
     is_testing_mode,
     log,
 )
-from scripts.data_structures.state_data import StateData
+from scripts.data_structures.state_data import DataOrganizer, StateData
+from scripts.multi_armed_bandit import MultiArmedBandit
 import bot_config
 import sys
 import warnings
-import sys
+
 
 
 def main():
@@ -24,8 +25,11 @@ def main():
 class Bot(object):
     def __init__(self):
         self.bot_smartcontract = get_BotSmartContract()
-        self.arb_data = StateData()
-        self.testing = False
+        self.data_organizer = DataOrganizer()
+        self.state_data = None
+        self.multi_armed_bandit = MultiArmedBandit(
+            _num_bandits=len(self.data_organizer.list_index_pairs)
+        )
 
     @rebooter
     def run(self):
@@ -44,11 +48,13 @@ class Bot(object):
             time.sleep(bot_config.time_between_epoch_due_checks)
 
     def run_epoch(self):
-        self.arb_data.update_to_best_possible()
-        self.arb_data.set_summary_message()
-        self.arb_data.print_summary()
-        if self.arb_data.passes_requirements():
-            self.arb_data.log_summary(bot_config.log_searches_path)
+        self.choose_and_set_token_pair()
+        self.state_data.update_to_best_possible()
+        self.update_multi_armed_bandit()
+        self.state_data.set_summary_message()
+        self.state_data.print_summary()
+        if self.state_data.passes_requirements():
+            self.state_data.log_summary(bot_config.log_searches_path)
             if is_testing_mode():
                 return self.act_test()
             else:
@@ -95,25 +101,25 @@ class Bot(object):
         return tx
 
     def get_flashloan_args(self):
+        # Up to this point, we were working with wei regardless of the native decimal count of the tokens
+        # TODO: clean this up
         flashloan_args = (
-            self.arb_data.token_addresses,
-            # TODO: clean this up
-            self.arb_data.optimal_borrow_amount
+            self.state_data.token_addresses,
+            [f.address for f in self.state_data.dex_factories],
+            [r.address for r in self.state_data.dex_routers],
+            self.state_data.optimal_borrow_amount
             / 10
             ** (
-                18 - self.arb_data.decimals[1]
+                18 - self.state_data.decimals[1]
             ),  # Important: we must pass amounts in the native decimal number of the tokens
-            self.arb_data.amount_to_return / 10 ** (18 - self.arb_data.decimals[0]),
-            self.arb_data.buy_dex_index,
-            self.arb_data.sell_dex_index,
-            self.arb_data.reversed_orders,
-            (1000 - 10 * self.arb_data.dex_fees[self.arb_data.buy_dex_index]),
+            self.state_data.buy_dex_index,
+            self.state_data.sell_dex_index,
+            self.state_data.reversed_orders,
+            (1000 - 10 * self.state_data.dex_fees[self.state_data.buy_dex_index]),
         )
         # TODO: clean this up
         print(flashloan_args)
-        print(self.bot_smartcontract.pairs(0))
-        print(self.bot_smartcontract.pairs(1))
-        print(get_wallet_balances(get_account(), self.arb_data.tokens))
+        print(get_wallet_balances(get_account(), self.state_data.tokens))
         return flashloan_args
 
     def retrieve_profits(self):
@@ -122,8 +128,29 @@ class Bot(object):
     def get_balances(self, address):
         return [
             tkn.balanceOf(address) / (10 ** decimal)
-            for tkn, decimal in zip(self.arb_data.tokens, self.arb_data.decimals)
+            for tkn, decimal in zip(self.state_data.tokens, self.state_data.decimals)
         ]
+
+    def choose_and_set_token_pair(self):
+        self.choose_pair()
+        # choices are betweein 1 to num_bandits+1. Hence we have to subtract 1
+        choice_index = self.multi_armed_bandit.last_choice - 1
+        token0_index, token1_index = self.get_token_name_pair_from_multi_armed_choice(
+            choice_index
+        )
+        self.state_data = self.data_organizer.get_pair_data(token0_index, token1_index)
+
+    def choose_pair(self):
+        self.multi_armed_bandit.update_choice_probs()
+        self.multi_armed_bandit.choose()
+
+    def get_token_name_pair_from_multi_armed_choice(self, _choice):
+        return self.data_organizer.list_index_pairs[_choice]
+
+    def update_multi_armed_bandit(self):
+        # We subtract because the bandit tries to maximize reward, but we sant the price buy/sell ratio to be minimal
+        reward = - self.state_data.price_buy_dex / self.state_data.price_sell_dex
+        self.multi_armed_bandit.update_choice_weights(reward)
 
     def log_pre_action(self):
         comment = f"\n\n\nRequesting flashloan and swapping...\n"
@@ -146,8 +173,8 @@ class Bot(object):
         msg = f"Actor balances: {actor_pre_loan_balance}\n"
         msg += f"Caller balances: {caller_pre_loan_balance}\n"
         msg += comment
-        self.arb_data.set_summary_message(addendum=msg)
-        self.arb_data.print_and_log_summary(path=bot_config.log_actions_path)
+        self.state_data.set_summary_message(addendum=msg)
+        self.state_data.print_and_log_summary(path=bot_config.log_actions_path)
 
 
 def epoch_due(block_number):

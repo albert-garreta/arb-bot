@@ -10,16 +10,17 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract BotSmartContract is Ownable, IUniswapV2Callee {
-    IUniswapV2Router02[] public routers;
-    IUniswapV2Factory[] public factories;
-    IUniswapV2Pair[] public pairs;
-    IERC20[] public tokens;
+    IERC20[2] public tokens;
+    IUniswapV2Factory[2] public factories;
+    IUniswapV2Router02[2] public routers;
+    IUniswapV2Pair[2] public pairTkns;
 
     // TODO: why call it CallbackData?
     struct CallbackData {
         address[] tokenAddresses;
+        address[] factoryAddresses;
+        address[] routerAddresses;
         uint256 amountTkn1ToBorrow;
-        uint256 expectedAmountTkn0ToReturn;
         uint8 buyDexIndex;
         uint8 sellDexIndex;
         bool[] orderReversions;
@@ -28,73 +29,127 @@ contract BotSmartContract is Ownable, IUniswapV2Callee {
 
     event LogBalancesAndDebts(
         uint256 indexed contractBalToken0,
-        uint256 indexed expectedAmountTkn0ToReturn,
         uint256 indexed actualAmountTkn0ToReturn
     );
 
-    constructor(
-        address[] memory _routerAddresses,
-        address[] memory _factoryAddresses,
-        address[] memory _tokenAddresses
-    ) {
-        modifyStateVariables(
-            _routerAddresses,
-            _factoryAddresses,
-            _tokenAddresses
-        );
+    // constructor(
+    //     address[] memory _routerAddresses,
+    //     address[] memory _factoryAddresses,
+    //     address[] memory _tokenAddresses
+    // ) {
+    //     addRoutersAndFactories(_routerAddresses, _factoryAddresses);
+    //     addTokens(_tokenAddresses);
+    // }
+    //
+    // function addRoutersAndFactories(
+    //     address[] memory _routerAddresses,
+    //     address[] memory _factoryAddresses
+    // ) public onlyOwner {
+    //     for (uint256 i = 0; i < _routerAddresses.length; i++) {
+    //         if (
+    //             checkIfAddressAldeadyRegistered(
+    //                 _routerAddresses[i],
+    //                 registeredRouterAddresses
+    //             )
+    //         ) {
+    //             addressToRouter[_routerAddresses[i]] = IUniswapV2Router02(
+    //                 _routerAddresses[i]
+    //             );
+    //             addressToFactory[_factoryAddresses[i]] = IUniswapV2Router02(
+    //                 _factoryAddresses[i]
+    //             );
+    //             registeredRouterAddresses.push(_routerAddresses[i]);
+    //             registeredFactoryAddresses.push(_factoryAddresses[i]);
+    //         }
+    //     }
+    // }
+    //
+    // function addTokens(address[] memory _tokenAddresses) public onlyOwner {
+    //     for (uint256 i = 0; i < _tokenAddresses.length; i++) {
+    //         if (
+    //             checkIfAddressAldeadyRegistered(
+    //                 _tokenAddresses[i],
+    //                 registeredTokenAddresses
+    //             )
+    //         ) {
+    //             tokens[_routerAddresses[i]] = IUniswapV2Router02(
+    //                 _routerAddresses[i]
+    //             );
+    //             registeredTokenAddresses.push(_tokenAddresses);
+    //         }
+    //     }
+    // }
+    //
+    // function checkIfAddressAldeadyRegistered(
+    //     address _address,
+    //     address[] memory registeredAddresses
+    // ) public view returns (bool) {
+    //     bool registered = false;
+    //     for (uint256 i = 0; i < registeredAddresses.length; i++) {
+    //         if (registeredAddresses[i] == _address) {
+    //             registered = true;
+    //         }
+    //     }
+    //     return registered;
+    // }
+
+    function requestFlashLoanAndAct(CallbackData memory _data) public {
+        bytes memory params = abi.encode(_data);
+        // require(false, 'hello');
+        updateCurrentContracts(_data);
+        _data.orderReversions[_data.buyDexIndex]
+            ? actWithOrderReversed(
+                _data.amountTkn1ToBorrow,
+                _data.buyDexIndex,
+                params
+            )
+            : actWithExpectedOrder(
+                _data.amountTkn1ToBorrow,
+                _data.buyDexIndex,
+                params
+            );
+        // sendAllFundsToOwner(msg.sender);
     }
 
-    function modifyStateVariables(
-        address[] memory _routerAddresses,
-        address[] memory _factoryAddresses,
-        address[] memory _tokenAddresses
-    ) public onlyOwner {
-        routers = new IUniswapV2Router02[](0);
-        factories = new IUniswapV2Factory[](0);
-        pairs = new IUniswapV2Pair[](0);
-        tokens = new IERC20[](0);
+    function updateCurrentContracts(CallbackData memory _data) internal {
+        // IERC20[] tokens = new IERC20[]();
+        // IUniswapV2Factory[] factories = new IUniswapV2Factory[]();
+        // IUniswapV2Router02[] routers = new IUniswapV2Router02[]();
+        // pairs = new IUniswapV2Pair[]();
 
-        for (uint8 i = 0; i < _routerAddresses.length; i++) {
-            routers.push(IUniswapV2Router02(_routerAddresses[i]));
-            factories.push(IUniswapV2Factory(_factoryAddresses[i]));
-            tokens.push(IERC20(_tokenAddresses[i]));
-            pairs.push(
-                IUniswapV2Pair(
-                    factories[i].getPair(_tokenAddresses[0], _tokenAddresses[1])
+        for (uint8 i = 0; i < 2; i++) {
+            tokens[i] = IERC20(_data.tokenAddresses[i]);
+            factories[i] = IUniswapV2Factory(_data.factoryAddresses[i]);
+            routers[i] = IUniswapV2Router02(_data.routerAddresses[0]);
+            pairTkns[i] = IUniswapV2Pair(
+                IUniswapV2Factory(_data.factoryAddresses[i]).getPair(
+                    _data.tokenAddresses[0],
+                    _data.tokenAddresses[1]
                 )
             );
         }
     }
 
-    //TODO: Is this necessary?
-    receive() external payable {}
-
-    function requestFlashLoanAndAct(CallbackData memory _data) public {
-        bytes memory params = abi.encode(_data);
-        _data.orderReversions[_data.buyDexIndex]
-            ? actWithOrderReversed(_data, params)
-            : actWithExpectedOrder(_data, params);
-        // sendAllFundsToOwner(msg.sender);
-    }
-
     function actWithExpectedOrder(
-        CallbackData memory _data,
+        uint256 _amountTkn1ToBorrow,
+        uint256 _buyDexIndex,
         bytes memory _params
     ) internal {
-        pairs[_data.buyDexIndex].swap(
+        pairTkns[_buyDexIndex].swap(
             0, // amount0Out
-            _data.amountTkn1ToBorrow, // amount1Out
+            _amountTkn1ToBorrow, // amount1Out
             address(this), // sender
             _params
         );
     }
 
     function actWithOrderReversed(
-        CallbackData memory _data,
+        uint256 _amountTkn1ToBorrow,
+        uint256 _buyDexIndex,
         bytes memory _params
     ) internal {
-        pairs[_data.buyDexIndex].swap(
-            _data.amountTkn1ToBorrow, // amount0Out
+        pairTkns[_buyDexIndex].swap(
+            _amountTkn1ToBorrow, // amount0Out
             0, // amount1Out
             address(this), // sender
             _params
@@ -130,7 +185,6 @@ contract BotSmartContract is Ownable, IUniswapV2Callee {
         );
         emit LogBalancesAndDebts(
             tokens[0].balanceOf(address(this)),
-            data.expectedAmountTkn0ToReturn,
             actualAmountTkn0ToReturn
         );
         uniswapV2CallCheckPostRequisites(actualAmountTkn0ToReturn);
@@ -175,7 +229,7 @@ contract BotSmartContract is Ownable, IUniswapV2Callee {
         // Due to price variability, the expected amount of Tkn0 to return may be different than the one computed
         // before interacting with the smartcontract. Hence we recalculate it here
         (uint256 reserveTkn0, uint256 reserveTkn1) = getOrderedReserves(
-            pairs[_data.buyDexIndex],
+            pairTkns[_data.buyDexIndex],
             _data.orderReversions[_data.buyDexIndex]
         );
         return
@@ -209,7 +263,7 @@ contract BotSmartContract is Ownable, IUniswapV2Callee {
         uint8 _buyDexIndex
     ) internal {
         tokens[0].transfer(
-            address(pairs[_buyDexIndex]),
+            address(pairTkns[_buyDexIndex]),
             expectedAmountTkn0ToReturn + 100
         );
     }
@@ -238,7 +292,7 @@ contract BotSmartContract is Ownable, IUniswapV2Callee {
         require(_sender == address(this), "Not from this contract");
         require(
             msg.sender ==
-                IUniswapV2Factory(factories[_data.buyDexIndex]).getPair(
+                factories[_data.buyDexIndex].getPair(
                     _data.tokenAddresses[0],
                     _data.tokenAddresses[1]
                 )

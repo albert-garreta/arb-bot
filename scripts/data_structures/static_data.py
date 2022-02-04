@@ -1,6 +1,9 @@
 import bot_config
 from brownie import interface, config, network
 from scripts.utils import get_account, get_token_names_and_addresses
+import pycoingecko
+
+cg = pycoingecko.CoinGeckoAPI()
 
 
 class dotdict(dict):
@@ -11,9 +14,8 @@ class dotdict(dict):
     __delattr__ = dict.__delitem__
 
 
-class StaticData(dotdict):
-    def __init__(self):
-        self.num_tokens = 2
+class StaticPairData(dotdict):
+    def __init__(self, index0, index1):
         self.num_dexes = 2
         self.tokens = []
         self.token_names = []
@@ -21,8 +23,10 @@ class StaticData(dotdict):
         self.token_addresses = []
         self.dex_names = []
         self.dex_fees = []
-        self.token_pairs_dexes = []
+        self.pair_contracts = []
         self.dex_routers = []
+        self.dex_factories = []
+        self.ordered_token_name_pairs = []
         # FIXME:
         # The `UniswapV2Pair` sometimes interchanges the order of the tokens: eg in
         # in mainnet's uniswap, if you pass (WETH, USDT) they get registerd correctly,
@@ -32,50 +36,72 @@ class StaticData(dotdict):
         self.max_value_of_flashloan = None
         self.summary_message = None
         self.reserves = []
-        self.fill_in_data()
+        self.dict_info_token_pairs = None
+        self.token_coingecko_ids = None
+        self.min_net_profit = None
+        self.fill_in_data(index0, index1)
 
-    def fill_in_data(self):
-        print("Retrieving all necessary pair contracts and data...")
-        self.fill_in_basic_info()
-        self.fill_in_tokens_and_decimals()
-        self.fill_in_token_pairs_and_reversions()
+    def fill_in_data(self, *args):
+        # print("Retrieving all necessary pair contracts and data...")
+        self.fill_in_basic_info(*args)
+        self.fill_in_token_contracts_and_decimals()
+        self.fill_in_dex_routers_and_factories()
+        self.fill_all_pair_contracts_and_reversions()
+        self.fill_in_min_net_profits()
         print("Retrieved")
-        print("Token names", bot_config.token_names)
-        print("Token decimals", bot_config.decimals)
+        # print("Token names", bot_config.token_names)
+        # print("Token decimals", bot_config.decimals)
 
-    def fill_in_basic_info(self):
+    def fill_in_basic_info(self, index0, index1):
         token_names, token_addresses = get_token_names_and_addresses()
-        self.token_addresses = token_addresses
-        self.token_names = token_names
+        self.token_addresses = [token_addresses[index0], token_addresses[index1]]
+        self.token_names = [token_names[index0], token_names[index1]]
         self.dex_names = bot_config.dex_names
         self.dex_fees = bot_config.dex_fees
         self.dex_slippages = bot_config.slippages
         self.max_value_of_flashloan = bot_config.max_value_of_flashloan
+        cg_api_ids = config["networks"][network.show_active()]["coingecko_ids"]
+        self.token_coingecko_ids = [cg_api_ids[index0], cg_api_ids[index1]]
 
-    def fill_in_tokens_and_decimals(self):
+    def fill_in_token_contracts_and_decimals(self):
         for token_address in self.token_addresses:
             token = interface.IERC20(token_address)
             decimals = token.decimals()
             self.tokens.append(token)
             self.decimals.append(decimals)
 
-    def fill_in_token_pairs_and_reversions(self):
+    def fill_in_dex_routers_and_factories(self):
         for dex_name in self.dex_names:
-            router, pair, reversed_order = self.get_dex_contracts_and_reversion_info(
-                dex_name
-            )
+            router, factory = get_dex_router_and_factory(dex_name)
             self.dex_routers.append(router)
-            self.token_pairs_dexes.append(pair)
+            self.dex_factories.append(factory)
+
+    def fill_all_pair_contracts_and_reversions(self):
+        for _dex_index in range(self.num_dexes):
+            pair, reversed_order = self.get_pair_contract_and_reversion_info(_dex_index)
+            self.pair_contracts.append(pair)
             self.reversed_orders.append(reversed_order)
 
-    def get_dex_contracts_and_reversion_info(self, _dex_num):
+    def get_pair_contract_and_reversion_info(self, _dex_index):
         account = get_account()
-        router, factory = get_dex_router_and_factory(_dex_num)
-        pair_address = factory.getPair(*self.token_addresses, {"from": account})
+        pair_address = self.dex_factories[_dex_index].getPair(
+            *self.token_addresses, {"from": account}
+        )
         pair = interface.IUniswapV2Pair(pair_address, {"from": account})
         reversed_order = order_has_reversed(self.token_addresses, pair)
-        return router, pair, reversed_order
+        return pair, reversed_order
 
+    def fill_in_min_net_profits(self):
+        price0 = cg.get_price(self.token_coingecko_ids[0], vs_currencies="usd")[
+            self.token_coingecko_ids[0]
+        ]["usd"]
+        price0 = float(price0)
+        self.min_net_profit =  bot_config.min_net_profits_in_usd /price0
+        print(self.token_coingecko_ids)
+        print(price0)
+        print(bot_config.min_net_profits_in_usd)
+        print(self.min_net_profit)
+        
     def update_all_dexes_reserves(self) -> tuple[tuple[int, int]]:
         if bot_config.force_actions and bot_config.forced_reserves:
             self.reserves = bot_config.forced_reserves
@@ -86,7 +112,7 @@ class StaticData(dotdict):
             ]
 
     def get_dex_reserves(self, _dex_index):
-        pair = self.token_pairs_dexes[_dex_index]
+        pair = self.pair_contracts[_dex_index]
         reserve0, reserve1, block_timestamp_last = pair.getReserves(
             {"from": get_account()}
         )

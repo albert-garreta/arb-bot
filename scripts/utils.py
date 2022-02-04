@@ -81,8 +81,8 @@ def get_token_names_and_addresses():
         config["networks"][network.show_active()]["token_addresses"][token_name]
         for token_name in token_names
     ]
-    print("Token names:", token_names)
-    print("Token addresses:", token_addresses)
+    # print("Token names:", token_names)
+    # print("Token addresses:", token_addresses)
     return token_names, token_addresses
 
 
