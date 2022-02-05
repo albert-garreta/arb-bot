@@ -51,6 +51,10 @@ RESERVE00, RESERVE10 = [11536786.090149844, 24026265.452085003]
 RESERVE01, RESERVE11 = [39658714.96042994, 75878131.847931]
 RESERVE00, RESERVE10 = [12025438.053268697, 23157867.74271]
 
+
+RESERVE00, RESERVE10 = [1151821.397824686, 364090452.64579535]
+RESERVE01, RESERVE11 = [258486.8937923908, 82755716.72664398]
+
 # RESERVE01, RESERVE11 = [10749301.949475199, 21647267.204137005]
 # RESERVE00, RESERVE10 = [41531458.45993912, 83620371.86791101]
 
@@ -69,12 +73,12 @@ def plot_final_profits():
     scale = 1
     amount_in_rndn = random.choices(range(0, 100, scale), k=number_points)
     amounts_out = []
-    arb_data = StateData()
+    arb_data = StateData(0,1)
     arb_data.reserves = [
         mult_list_by_scalar([RESERVE00, RESERVE10], 1e18),
         mult_list_by_scalar([RESERVE01, RESERVE11], 1e18),
     ]
-    arb_data.update_given_buy_dex(_buy_dex_index=0)
+    arb_data.update_given_buy_dex(_buy_dex_index=1)
 
     f = fix_parameters_of_function(get_net_profit_v3, (arb_data,))
 
@@ -93,6 +97,8 @@ def plot_final_profits():
     sell_price = arb_data.get_dex_price(arb_data.reserves[1])
     ratio = buy_price / sell_price
     print(f"Price ratios {ratio}, {1/ratio}")
+    #print(arb_data.profit_function(252.29617785267552 * 1e21)/1e18)
+    #print(arb_data.profit_function(260.29617785267552 *1e21)/1e18)
     sbn.scatterplot(x=amount_in_rndn, y=amounts_out)
     plt.show()
 

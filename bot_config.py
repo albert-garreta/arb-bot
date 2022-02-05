@@ -17,7 +17,7 @@ MAIN_NETWORKS = ["ftm-main", "mainnet", "polygon-main"]
 # TODO: integrate with the config file?
 
 passive_mode = False  # prevents making blockchain transactions
-auto_reboot = True  # bot reboots automatically in case of an error
+auto_reboot = False  # bot reboots automatically in case of an error
 force_actions = False
 verbose = True
 telegram_notifications = True
@@ -68,7 +68,7 @@ loan_bounds = (0, max_value_of_flashloan)
 max_price_ratio = 0.995
 min_net_profits_in_usd = 3.5
 if network.show_active() in FTM_NETWORKS:
-    gas_strategy = "1200 gwei"  # GasNowStrategy("fast")
+    gas_strategy = "700 gwei"  # GasNowStrategy("fast")
     min_net_profit = 1e18 * 1  # WFTM
     forced_tkn0_to_buy = 1e18 * 3.5 * 100 / lending_pool_fee
     forced_tkn1_to_sell = 1e18 * 7.7 * 100 / lending_pool_fee
@@ -118,7 +118,7 @@ def mult_list_by_scalar(_list, _scalar):
 # arbitrage attains big profits. The bot should succees with these reserves
 forced_reserves = [
     mult_list_by_scalar([39658714.96042994, 75878131.847931], 1e18),
-    mult_list_by_scalar([10025438.053268697, 23157867.74271], 1e18),
+    mult_list_by_scalar([12025438.053268697, 23157867.74271], 1e18),
 ]
 
 

@@ -141,7 +141,7 @@ contract BotSmartContract is Ownable, IUniswapV2Callee {
         bytes calldata _data
     ) public {
         /** Function called by the LP pair once it has sent the requested funds to this contract
-        - First it decodes the encoded ArbData structure and it arranges the received funds to
+        - First it decodes the encoded struct ArbData and it arranges the received funds to
         match our naming conventions.
         - Then it swaps tokens normally in the selling Dex.
         - Then it computes the amount of token0 owned to the LP and sends such amount to the LP. 
@@ -155,6 +155,7 @@ contract BotSmartContract is Ownable, IUniswapV2Callee {
             data.amountTkn1ToBorrow,
             data
         );
+        emit LogBalancesAndDebts(tokens[0].balanceOf(address(this)), actualAmountTkn0ToReturn);
         // Avoid these checks for gas savings
         // uniswapV2CallCheckPostRequisites(actualAmountTkn0ToReturn);
         returnFundsToPair(actualAmountTkn0ToReturn, data.buyDexIndex);

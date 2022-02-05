@@ -1,6 +1,8 @@
 from tkinter import E
 from brownie import chain
 import time, warnings, sys
+
+import telegram
 from scripts.deploy import get_BotSmartContract
 from scripts.utils import (
     get_account,
@@ -15,7 +17,7 @@ from scripts.multi_armed_bandit import MultiArmedBandit
 import bot_config
 import sys
 import warnings
-
+import telegram_send
 
 def main():
     Bot().run()
@@ -189,6 +191,7 @@ class Bot(object):
     def log_failure(self, _exception, msg=""):
         msg = "Operation failed\n"
         msg += f"The exception is\n{_exception}\n" + msg
+        telegram_send.send(messages= [msg])
         log(msg, bot_config.log_actions_path)
 
     def print_log_summary_with_balances_and_comment(self, comment=""):
