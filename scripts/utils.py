@@ -1,12 +1,68 @@
 from brownie import accounts, network, config, interface, chain
-from scipy.optimize import linprog
 from datetime import datetime
-import sys, getopt, os
+import sys
 import bot_config
-from bot_config import (
-    LOCAL_BLOCKCHAIN_ENVIRONMENTS,
-    NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS,
-)
+from bot_config import LOCAL_BLOCKCHAIN_ENVIRONMENTS
+
+
+"""General utility functions. Leter there are brownie-specific utilities"""
+
+
+def is_testing_mode():
+    # Returns True if we are running a test (with pytest).
+    # Otherwise returns False
+    return "PYTEST_CURRENT_TEST" in sys.argv[0]
+
+
+def log(msg, path):
+    msg = f"\n{datetime.now()}\n" + msg
+    with open(path, "a") as f:
+        f.write(msg)
+
+
+def mult_list_by_scalar(_list, _scalar):
+    return [_scalar * element for element in _list]
+
+
+def fix_parameters_of_function(_fun, _args_1_tuple):
+    # Given a function f(x,y) where x, y are two vectors,
+    # and a vector y_0, it returns the function g(x) = f(x, y_0)
+    # Here y_0 = _args_1_tuple and x=args_2
+    def new_fun(*args_2):
+        return _fun(*args_2, *_args_1_tuple)
+
+    return new_fun
+
+
+def reverse_scalar_fun(_fun):
+    # Transforms a function f(x) into -f(x)
+    def reverse_fun(*args):
+        return -_fun(*args)
+
+    return reverse_fun
+
+
+def auto_reboot(function):
+    # Any function wrapped with this will re-execute itself in case of
+    # raising an exception.
+
+    def wrapped_fun(*args, **kwargs):
+        try:
+            return function(*args, **kwargs)
+        except Exception as e:
+            print(f"\nREBOOTING due to the following exception:\n{e}\n")
+            return wrapped_fun(*args, **kwargs)
+
+    return wrapped_fun
+
+
+def print_args_wrapped(fun):
+    # A function wrapped with this will print its args upon being called
+    def w_fun(*args, **kwargs):
+        print(*args)
+        return fun(*args, **kwargs)
+
+    return w_fun
 
 
 def get_latest_block_number():
@@ -20,69 +76,15 @@ def get_latest_block_number():
         return e
 
 
-def is_testing_mode():
-    return "PYTEST_CURRENT_TEST" in sys.argv[0]
-
-
-def log(msg, path):
-    msg = f"\n{datetime.now()}\n" + msg
-    with open(path, "a") as f:
-        f.write(msg)
-
-
-def num_digits(number: int) -> int:
-    return len(str(number))
-
-
-def mult_list_by_scalar(_list, _scalar):
-    return [_scalar * element for element in _list]
-
-
-def fix_parameters_of_function(_fun, _args_1_tuple):
-    def new_fun(*args_2):
-        return _fun(*args_2, *_args_1_tuple)
-
-    return new_fun
-
-
-def reverse_scalar_fun(_fun):
-    def reverse_fun(*args):
-        return -_fun(*args)
-
-    return reverse_fun
-
-
-def rebooter(function):
-    def wrapped_fun(*args, **kwargs):
-        try:
-            return function(*args, **kwargs)
-        except Exception as e:
-            if bot_config.rebooter_bot:
-                print(f"\nREBOOTING due to the following exception:\n{e}\n")
-                return wrapped_fun(*args, **kwargs)
-            else:
-                raise e
-
-    return wrapped_fun
-
-
-def print_args_wrapped(fun):
-    def w_fun(*args, **kwargs):
-        print(*args)
-        return fun(*args, **kwargs)
-
-    return w_fun
+"""Brownie specific utility functions"""
 
 
 def get_token_names_and_addresses():
     token_names = config["networks"][network.show_active()]["token_names"]
-    # we do it like this to avoid getting the wrapped mainnet token in this list
     token_addresses = [
         config["networks"][network.show_active()]["token_addresses"][token_name]
         for token_name in token_names
     ]
-    # print("Token names:", token_names)
-    # print("Token addresses:", token_addresses)
     return token_names, token_addresses
 
 

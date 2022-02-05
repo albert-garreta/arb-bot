@@ -12,7 +12,9 @@ import numpy as np
 from scipy.optimize import minimize_scalar
 from brownie import chain
 import telegram_send
+from pycoingecko import CoinGeckoAPI
 
+cg = CoinGeckoAPI()
 
 class DataOrganizer(dotdict):
     def __init__(self):
@@ -31,16 +33,24 @@ class DataOrganizer(dotdict):
             str_pair = get_pair_to_str_form(index0, index1)
             self.token_pair_to_pair_data[str_pair] = StateData(index0, index1)
             self.list_index_pairs.append([index0, index1])
-            print("Set up done")
+            print("Set up done\n")
         except Exception as e:
             print("Setting up failed. Ignoring pair.")
             print("The exception was:")
             print(e)
-
+            print('\n')
+#
     def get_pair_data(self, index0, index1):
         str_pair = get_pair_to_str_form(index0, index1)
         return self.token_pair_to_pair_data[str_pair]
 
+    def maintenance(self):
+        print('Updating min net profits...')
+        for str_pair, state_data in self.token_pair_to_pair_data.items():
+            print(str_pair)
+            state_data.fill_in_min_net_profits()
+            self.token_pair_to_pair_data[str_pair] =state_data
+        print('Net profits updated')
 
 def get_pair_to_str_form(index0, index1):
     return str(index0) + "_" + str(index1)
@@ -101,6 +111,7 @@ class StateData(StaticPairData):
     def update_optimal_amounts_net_profit_and_more(
         self, optimal_borrow_amount, net_profit
     ):
+        # TODO: clean this up
         self.optimal_borrow_amount = optimal_borrow_amount
         self.net_profit = net_profit
         # If the optimal_borrow_amount is negative, we want to record a net_profit of 0.
@@ -109,15 +120,10 @@ class StateData(StaticPairData):
         self.amount_to_return = get_dex_amount_in(
             optimal_borrow_amount, self.get_buy_dex_data()
         )
-        # self.price_buy_dex = get_dex_amount_out(
-        #     optimal_borrow_amount, self.get_buy_dex_data()
-        # )
-        # self.price_sell_dex = get_dex_amount_out(
-        #     optimal_borrow_amount, self.get_sell_dex_data()
-        # )
         self.price_buy_dex = self.get_dex_price(self.reserves_buying_dex)
-        self.price_sell_dex = self.get_dex_price(self.reserves_buying_dex)
+        self.price_sell_dex = self.get_dex_price(self.reserves_selling_dex)
         self.price_ratio = self.price_buy_dex / self.price_sell_dex
+        self.reward = self.net_profit /(1e18*self.min_net_profit )
 
     def get_dex_data(self, _buying):
         if _buying:
@@ -206,7 +212,7 @@ class StateData(StaticPairData):
         msg += f"Price selling dex: {self.price_sell_dex}\n"
         msg += f"Price ratio: {self.price_ratio}\n"
         msg += f"Buying dex index: {self.buy_dex_index}\n"
-        msg += f"Net profit: {round(self.net_profit_relu/1e18,6)} ({round(self.net_profit/1e18,6)}) (Min: {round(self.min_net_profit,6)})\n"
+        msg += f"Net profit: {self.net_profit_relu/1e18} ({round(self.net_profit/1e18,6)}) (Min: {round(self.min_net_profit,6)})\n"
         msg += f"Optimal borrow amount: {self.optimal_borrow_amount/1e18}\n"
         msg += addendum
         msg += "\n"

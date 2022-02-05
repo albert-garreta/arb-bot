@@ -11,13 +11,13 @@ LOCAL_BLOCKCHAIN_ENVIRONMENTS = NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS + [
 ]
 ETH_NETWORKS = ["mainnet", "mainnet-fork", "kovan"]
 FTM_NETWORKS = ["ftm-main", "ftm-main-fork", "ftm-test"]
-MATIC_NETWORKS=  ['polygon-main', "polygon-main-fork"]
-AVAX_NETWORKS=  ['avax-main', "avax-main-fork"]
+MATIC_NETWORKS = ["polygon-main", "polygon-main-fork"]
+AVAX_NETWORKS = ["avax-main", "avax-main-fork"]
 MAIN_NETWORKS = ["ftm-main", "mainnet", "polygon-main"]
 # TODO: integrate with the config file?
 
 passive_mode = False  # prevents making blockchain transactions
-rebooter_bot = False  # bot reboots automatically in case of an error
+auto_reboot = True  # bot reboots automatically in case of an error
 force_actions = False
 verbose = True
 telegram_notifications = True
@@ -61,7 +61,7 @@ weth_balance_actor_and_caller = 10 * 1e18
 
 # Very important argument: max total value that we flashloan
 # Multiply by 0.995 yo givr some wiggle room
-max_value_of_flashloan = 1e6*1e18
+max_value_of_flashloan = 1e6 * 1e18
 loan_bounds = (0, max_value_of_flashloan)
 
 
@@ -84,13 +84,13 @@ elif network.show_active() in MATIC_NETWORKS:
     forced_tkn1_to_sell = 1e18 * 7.7 * 100 / lending_pool_fee
 elif network.show_active() in AVAX_NETWORKS:
     min_net_profit = 1e18 * 0.02
-    gas_strategy = '40 gwei'
+    gas_strategy = "40 gwei"
 else:
     raise Exception
 
 
 blocks_to_wait = 0
-time_between_epoch_due_checks = 0.1
+time_between_epoch_due_checks = 0
 
 token_pair = f"{token_names[0]}-{token_names[1]}"
 directory = f"./logs/{network.show_active()}/{token_pair}/"
@@ -107,6 +107,9 @@ log_searches_path = directory + f"searches_logs.txt"
 gas_limit = 1_800_000
 
 
+bot_maintenance_epoch_frequency = 10 * 60 * 2  # every 10 minutes approx
+
+
 def mult_list_by_scalar(_list, _scalar):
     return [_scalar * element for element in _list]
 
@@ -114,9 +117,9 @@ def mult_list_by_scalar(_list, _scalar):
 # This is a handcrafted reserve scenario for token0=WFTM token1=USDC where
 # arbitrage attains big profits. The bot should succees with these reserves
 forced_reserves = [
-        mult_list_by_scalar([39658714.96042994, 75878131.847931], 1e18),
-        mult_list_by_scalar([10025438.053268697, 23157867.74271], 1e18),
-    ]
+    mult_list_by_scalar([39658714.96042994, 75878131.847931], 1e18),
+    mult_list_by_scalar([10025438.053268697, 23157867.74271], 1e18),
+]
 
 
 if (

@@ -45,12 +45,13 @@ class MultiArmedBandit(object):
             self.exploration_probability * x_ / self.num_bandits
         )
         print('Choice weights:', self.choice_weights)
-        self.maintenance()
+        print(f'MultiArmedBandit reward: {_reward}')
+        #self.maintenance()
     
     def maintenance(self):
         self.num_updates +=1
-        if self.num_updates > self.num_bandits*1500:
-            self.reset()
+        # if self.num_updates > self.num_bandits*1500:
+        #     self.reset()
         
     def reset(self):
         self.num_updates = 0 

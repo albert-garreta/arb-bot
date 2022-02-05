@@ -41,9 +41,9 @@ class StaticPairData(dotdict):
         self.min_net_profit = None
         self.fill_in_data(index0, index1)
 
-    def fill_in_data(self, *args):
+    def fill_in_data(self, index0, index1):
         # print("Retrieving all necessary pair contracts and data...")
-        self.fill_in_basic_info(*args)
+        self.fill_in_basic_info(index0, index1)
         self.fill_in_token_contracts_and_decimals()
         self.fill_in_dex_routers_and_factories()
         self.fill_all_pair_contracts_and_reversions()
@@ -61,6 +61,7 @@ class StaticPairData(dotdict):
         self.dex_slippages = bot_config.slippages
         self.max_value_of_flashloan = bot_config.max_value_of_flashloan
         cg_api_ids = config["networks"][network.show_active()]["coingecko_ids"]
+        print(cg_api_ids)
         self.token_coingecko_ids = [cg_api_ids[index0], cg_api_ids[index1]]
 
     def fill_in_token_contracts_and_decimals(self):
@@ -96,12 +97,12 @@ class StaticPairData(dotdict):
             self.token_coingecko_ids[0]
         ]["usd"]
         price0 = float(price0)
-        self.min_net_profit =  bot_config.min_net_profits_in_usd /price0
+        self.min_net_profit = bot_config.min_net_profits_in_usd / price0
         print(self.token_coingecko_ids)
         print(price0)
         print(bot_config.min_net_profits_in_usd)
         print(self.min_net_profit)
-        
+
     def update_all_dexes_reserves(self) -> tuple[tuple[int, int]]:
         if bot_config.force_actions and bot_config.forced_reserves:
             self.reserves = bot_config.forced_reserves

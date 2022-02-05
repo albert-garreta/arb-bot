@@ -16,12 +16,25 @@ networks:
   polygon-main:
     token_names:
       - "WMATIC"
-      #- "USDC"
+      - "USDC"
       - "DAI"
+      - "LINK"
+      - "WBTC"
+      - "WETH"
     token_addresses:
       WMATIC: "0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270" # WMATIC
       USDC: "0x2791bca1f2de4661ed88a30c99a7a9449aa84174" # USDC
       DAI: "0x8f3cf7ad23cd3cadbd9735aff958023239c6a063" # USDC
+      LINK: "0x53e0bca35ec356bd5dddfebbd1fc0fd03fabad39"
+      WBTC: "0x1bfd67037b42cf73acf2047067bd4f2c47d9bfd6"
+      WETH: "0x7ceb23fd6bc0add59e62ac25578270cff1b9f619"
+    coingecko_ids:
+      - "matic-network"
+      - "usd-coin"
+      - "dai"
+      - "chainlink"
+      - "bitcoin"
+      - "ethereum"
     price_feed_address: "0xf4766552D15AE4d256Ad41B6cf2933482B0680dc"
     dexes:
       names:
@@ -65,12 +78,13 @@ networks:
     token_names:
       - "WFTM"
       - "USDC"
-      #- "TOMB"
-      #- "SPIRIT"
+      - "TOMB"
+      - "SPIRIT"
       - "DAI"
-      #- "SPELL"
-      #- "SPIRIT"
+      - "SPELL"
       - "WETH"
+      - "WBTC"
+      - "LINK"
     token_addresses:
       WFTM: "0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83" # WFTM
       USDC: "0x04068DA6C83AFCFA0e13ba15A6696662335D5B75" # USDC
@@ -79,14 +93,18 @@ networks:
       DAI: "0x8d11ec38a3eb5e956b052f67da8bdc9bef8abf3e" # USDC
       SPELL: "0x468003b688943977e6130f4f68f23aad939a1040"
       WETH: "0x74b23882a30290451a17c44f4f05243b6b58c76d"
+      WBTC: "0x321162cd933e2be498cd2267a90534a804051b11"
+      LINK: "0xb3654dc3d10ea7645f8319668e8f54d2574fbdc8"
     coingecko_ids:
       - "fantom" # WFTM
       - "usd-coin" # USDC
       - "tomb" # USDC
-     # - "spiritswap" # USDC
+      - "spiritswap" # USDC
       - "dai" # USDC
-     # - "spell-token"
+      - "spell-token"
       - "ethereum"
+      - "bitcoin"
+      - "chainlink"
     lending_pool_addresses_provider_address: "0x6c793c628Fe2b480c5e6FB7957dDa4b9291F9c9b"
     price_feed_address: "0xf4766552D15AE4d256Ad41B6cf2933482B0680dc"
     dexes:
@@ -115,10 +133,10 @@ networks:
       - "USDC"
       #- "TOMB"
       #- "SPIRIT"
-     # - "DAI"
-     # - "SPELL"
-     # - "SPIRIT"
-     # - "WETH"
+      # - "DAI"
+      # - "SPELL"
+      # - "SPIRIT"
+      # - "WETH"
     token_addresses:
       WFTM: "0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83" # WFTM
       USDC: "0x04068DA6C83AFCFA0e13ba15A6696662335D5B75" # USDC
@@ -133,7 +151,7 @@ networks:
       - "tomb" # USDC
       #- "spiritswap" # USDC
       - "dai" # USDC
-     # - "spell-token"
+      # - "spell-token"
       - "ethereum"
     lending_pool_addresses_provider_address: "0x6c793c628Fe2b480c5e6FB7957dDa4b9291F9c9b"
     price_feed_address: "0xf4766552D15AE4d256Ad41B6cf2933482B0680dc"
@@ -182,6 +200,9 @@ networks:
       - "WAVAX"
       - "USDC"
       - "WETH"
+      - "WBTC"
+      - "DAI"
+      - "LINK"
     token_addresses:
       # this is actually wFTM, but we keep the name weth for simplicity of code
       WAVAX: "0xb31f66aa3c1e785363f0875a1b74e27b85fd66c7" # WFTM
@@ -189,12 +210,14 @@ networks:
       WETH: "0x49d5c2bdffac6ce2bfdb6640f4f80f226bc10bab"
       WBTC: "0x50b7545627a5162f82a992c33b87adc75187b218"
       DAI: "0xd586e7f844cea2f87f50152665bcbc2c279d8d70"
+      LINK: "0x5947bb275c521040051d82396192181b413227a3"
     coingecko_ids:
       - "avalanche-2"
       - "usd-coin"
       - "ethereum"
       - "bitcoin"
       - "dai"
+      - "chainlink"
     dexes:
       names:
         - "traderjoe"

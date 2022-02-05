@@ -5,7 +5,7 @@ from scripts.deploy import get_BotSmartContract
 from scripts.utils import (
     get_account,
     get_wallet_balances,
-    rebooter,
+    auto_reboot,
     get_latest_block_number,
     is_testing_mode,
     log,
@@ -15,7 +15,6 @@ from scripts.multi_armed_bandit import MultiArmedBandit
 import bot_config
 import sys
 import warnings
-
 
 
 def main():
@@ -30,8 +29,9 @@ class Bot(object):
         self.multi_armed_bandit = MultiArmedBandit(
             _num_bandits=len(self.data_organizer.list_index_pairs)
         )
+        self.num_epochs = 0
 
-    @rebooter
+    @auto_reboot
     def run(self):
         """
         The bot runs an epoch every time bot_config["time_between_epoch_due_checks"] are mined.
@@ -46,6 +46,19 @@ class Bot(object):
                 print(f"Starting epoch after waiting for {elapsed_time}s")
                 self.run_epoch()
             time.sleep(bot_config.time_between_epoch_due_checks)
+            self.maintenance()
+
+    def maintenance(self):
+        self.num_epochs += 1
+        if self.maintenance_due():
+            print("Entering bot maintenance mode...")
+            self.data_organizer.maintenance()
+            print("Maintenance done")
+        else:
+            pass
+
+    def maintenance_due(self):
+        return (self.num_epochs + 1) % bot_config.bot_maintenance_epoch_frequency == 0
 
     def run_epoch(self):
         self.choose_and_set_token_pair()
@@ -76,8 +89,20 @@ class Bot(object):
             self.log_post_action(tx.info())
             return tx
         except Exception as e:
-            self.log_failure(e)
-            raise e
+            self.handle_failure(e)
+
+    def handle_failure(self, _exception):
+        self.state_data.set_summary_message(
+            addendum=f"Info before the failure\n{self.flashloan_args}\n"
+        )
+        self.state_data.print_and_log_summary(path=bot_config.log_actions_path)
+        self.state_data.update_to_best_possible()
+        self.state_data.set_summary_message(
+            addendum=f"Info after failure\n{self.flashloan_args}\n"
+        )
+        self.state_data.print_and_log_summary(path=bot_config.log_actions_path)
+        self.log_failure(_exception)
+        raise _exception
 
     def act_test(self):
         # Same as act but it halts if flashloand_and_swap fails
@@ -103,7 +128,7 @@ class Bot(object):
     def get_flashloan_args(self):
         # Up to this point, we were working with wei regardless of the native decimal count of the tokens
         # TODO: clean this up
-        flashloan_args = (
+        self.flashloan_args = (
             self.state_data.token_addresses,
             [f.address for f in self.state_data.dex_factories],
             [r.address for r in self.state_data.dex_routers],
@@ -118,9 +143,8 @@ class Bot(object):
             (1000 - 10 * self.state_data.dex_fees[self.state_data.buy_dex_index]),
         )
         # TODO: clean this up
-        print(flashloan_args)
         print(get_wallet_balances(get_account(), self.state_data.tokens))
-        return flashloan_args
+        return self.flashloan_args
 
     def retrieve_profits(self):
         return self.bot_smartcontract.sendAllFundsToOwner({"from": get_account()})
@@ -149,11 +173,12 @@ class Bot(object):
 
     def update_multi_armed_bandit(self):
         # We subtract because the bandit tries to maximize reward, but we sant the price buy/sell ratio to be minimal
-        reward = - self.state_data.price_buy_dex / self.state_data.price_sell_dex
+        # reward = - self.state_data.price_buy_dex / self.state_data.price_sell_dex
+        reward = self.state_data.reward
         self.multi_armed_bandit.update_choice_weights(reward)
 
     def log_pre_action(self):
-        comment = f"\n\n\nRequesting flashloan and swapping...\n"
+        comment = f"\n\n\nNEW ACTION: Requesting flashloan and swapping...\n"
         print(comment)
         log(comment, bot_config.log_actions_path)
 
@@ -164,7 +189,7 @@ class Bot(object):
     def log_failure(self, _exception, msg=""):
         msg = "Operation failed\n"
         msg += f"The exception is\n{_exception}\n" + msg
-        self.print_log_summary_with_balances_and_comment(msg)
+        log(msg, bot_config.log_actions_path)
 
     def print_log_summary_with_balances_and_comment(self, comment=""):
         # TODO: create separate class for logging
