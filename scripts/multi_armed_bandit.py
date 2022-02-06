@@ -1,7 +1,5 @@
-import random
 from turtle import st
 import numpy as np
-import sys
 import bot_config
 
 
@@ -13,8 +11,13 @@ def get_num_bandits():
 
 
 class MultiArmedBandit(object):
+    """
+    https://en.wikipedia.org/wiki/Multi-armed_bandit
+    https://ieeexplore.ieee.org/document/892116
+    """
+
     def __init__(self, _num_bandits):
-        self.num_bandits =_num_bandits
+        self.num_bandits = _num_bandits
         self.range_for_bandits = range(1, self.num_bandits + 1)
         self.exploration_probability = bot_config.bandit_exploration_probability
         self.choice_weights = np.ones((self.num_bandits,))
@@ -44,15 +47,14 @@ class MultiArmedBandit(object):
         self.choice_weights *= np.exp(
             self.exploration_probability * x_ / self.num_bandits
         )
-        print('Choice weights:', self.choice_weights)
-        print(f'MultiArmedBandit reward: {_reward}')
-        #self.maintenance()
-    
+        print("Choice weights:", self.choice_weights)
+        print(f"MultiArmedBandit reward: {_reward}")
+
     def maintenance(self):
-        self.num_updates +=1
-        # if self.num_updates > self.num_bandits*1500:
-        #     self.reset()
-        
+        # Not in use
+        self.num_updates += 1
+
     def reset(self):
-        self.num_updates = 0 
+        # Not in use
+        self.num_updates = 0
         self.choice_weights = np.ones((self.num_bandits,))

@@ -120,7 +120,7 @@ class Bot(object):
             flashloan_args,
             {
                 "from": get_account(),
-                "gas_price": bot_config.gas_strategy,
+                # "gas_price": bot_config.gas_strategy,
                 # "gas_limit": bot_config.gas_limit,
             },
         )

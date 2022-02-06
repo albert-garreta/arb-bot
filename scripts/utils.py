@@ -42,16 +42,20 @@ def reverse_scalar_fun(_fun):
     return reverse_fun
 
 
-def auto_reboot(function):
+def auto_reboot(function, auto_reboot=bot_config.auto_reboot):
     # Any function wrapped with this will re-execute itself in case of
     # raising an exception.
+    # The auto_reboot parameter allows to switch off the auto_reboot from a config file
 
     def wrapped_fun(*args, **kwargs):
         try:
             return function(*args, **kwargs)
         except Exception as e:
-            print(f"\nREBOOTING due to the following exception:\n{e}\n")
-            return wrapped_fun(*args, **kwargs)
+            if auto_reboot:
+                print(f"\nREBOOTING due to the following exception:\n{e}\n")
+                return wrapped_fun(*args, **kwargs)
+            else:
+                raise e
 
     return wrapped_fun
 
@@ -65,6 +69,16 @@ def print_args_wrapped(fun):
     return w_fun
 
 
+def swap_if_true_flag(value0, value1, bool_flag):
+    if bool_flag:
+        return value1, value0
+    else:
+        return value0, value1
+
+
+"""Brownie specific utility functions"""
+
+
 def get_latest_block_number():
     # Retrieve the latest block mined: chain[-1]
     # https://eth-brownie.readthedocs.io/en/stable/core-chain.html#accessing-block-information
@@ -74,9 +88,6 @@ def get_latest_block_number():
         return latest_block_number
     except Exception as e:
         return e
-
-
-"""Brownie specific utility functions"""
 
 
 def get_token_names_and_addresses():

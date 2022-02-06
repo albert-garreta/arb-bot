@@ -1,7 +1,9 @@
 from web3 import Web3
-from brownie.network.gas.strategies import GasNowStrategy
+from brownie.network.gas.strategies import ExponentialScalingStrategy
 from brownie import network, config
 import os
+
+# network.gas_price(GethMempoolStrategy())
 
 NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS = ["development", "ganache"]
 LOCAL_BLOCKCHAIN_ENVIRONMENTS = NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS + [
@@ -68,7 +70,12 @@ loan_bounds = (0, max_value_of_flashloan)
 max_price_ratio = 0.995
 min_net_profits_in_usd = 3.5
 if network.show_active() in FTM_NETWORKS:
-    gas_strategy = "700 gwei"  # GasNowStrategy("fast")
+    # gas_strategy = "700 gwei"  # GasNowStrategy("fast")
+    # gas_strategy = GasNowStrategy("rapid")
+    gas_strategy = ExponentialScalingStrategy(
+        "700 gwei", "1300 gwei", time_duration=0.4
+    )
+
     min_net_profit = 1e18 * 1  # WFTM
     forced_tkn0_to_buy = 1e18 * 3.5 * 100 / lending_pool_fee
     forced_tkn1_to_sell = 1e18 * 7.7 * 100 / lending_pool_fee
@@ -92,19 +99,11 @@ else:
 blocks_to_wait = 0
 time_between_epoch_due_checks = 0
 
-token_pair = f"{token_names[0]}-{token_names[1]}"
-directory = f"./logs/{network.show_active()}/{token_pair}/"
+directory = f"./logs/{network.show_active()}/"
 if not os.path.exists(directory):
     os.makedirs(directory)
 log_actions_path = directory + f"action_logs.txt"
 log_searches_path = directory + f"searches_logs.txt"
-
-# set to an integer to set a constant gas price
-# NOTE: this is only used for the flashloan call of actor
-# gas_strategy = GasNowStrategy("fast")
-
-# this is based on a successful run of the flashloan call
-gas_limit = 1_800_000
 
 
 bot_maintenance_epoch_frequency = 10 * 60 * 2  # every 10 minutes approx
