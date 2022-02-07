@@ -120,7 +120,9 @@ contract BotSmartContract is Ownable, IUniswapV2Callee {
         );
     }
 
-    /** The next functions are called by the LP once it has sent the requested funds.  */
+    /** ----------------------------------------------------------------
+    The next functions are called by the LP once it has sent the requested funds.  
+    */
 
     function pancakeCall(
         // The name of the function called by the LP  is not the same on every dex.

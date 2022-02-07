@@ -15,6 +15,14 @@ class dotdict(dict):
 
 
 class StaticPairData(dotdict):
+    """This data structure stores all the necessary static information the bot needs
+    about a *pair of tokens* and a pair of dexes.
+
+    A further class called `StateData` inherits from this.
+    The latter manages all information that is variable through time (such as dex's reserves).
+
+    """
+
     def __init__(self, index0, index1):
         self.num_dexes = 2
         self.tokens = []
@@ -39,7 +47,9 @@ class StaticPairData(dotdict):
         self.min_net_profit = None
         self.fill_in_data(index0, index1)
 
-    """Fill in functions"""
+    """----------------------------------------------------------------
+    Fill in functions
+    ----------------------------------------------------------------"""
 
     def fill_in_data(self, index0, index1):
         # Fills in all the attributes declared in the __init__ method
@@ -97,10 +107,10 @@ class StaticPairData(dotdict):
         price0 = float(price0)
         self.min_net_profit = bot_config.min_net_profits_in_usd / price0
 
-    """
+    """----------------------------------------------------------------
     End of fill-in methods.
     Beginning of reserve-updating methods
-    """
+    ----------------------------------------------------------------"""
 
     def update_all_dexes_reserves(self) -> tuple[tuple[int, int]]:
         # Gets [token0_reserves, token1_reserves] for each dex
@@ -126,7 +136,7 @@ class StaticPairData(dotdict):
         # 2: Sets all reserves decimals to 18 (wei)
         reversed_order = self.reversed_orders[_dex_index]
         reserve0, reserve1 = swap_if_true_flag(_reserve0, _reserve1, reversed_order)
-        return self.update_reserves_decimals(reserve0, reserve1, self.decimals)
+        return self.update_reserves_decimals(reserve0, reserve1)
 
     def update_reserves_decimals(self, _reserve0, _reserve1):
         # Sets all reserves decimals to 18 (wei)
@@ -138,7 +148,7 @@ class StaticPairData(dotdict):
 
 def order_has_reversed(_stored_token_addresses, _pair):
     # Given a list of two token addresses and an LP pair contract with these
-    # addresses, returns True if the recorded orders on the list and the LP 
+    # addresses, returns True if the recorded orders on the list and the LP
     # does not match. Otherwise returns False
     account = get_account()
     token0_address_in_pair = _pair.token0({"from": account})

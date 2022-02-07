@@ -1,8 +1,5 @@
 from tkinter import E
-from brownie import chain
-import time, warnings, sys
-
-import telegram
+import time, warnings
 from scripts.deploy import get_BotSmartContract
 from scripts.utils import (
     get_account,
@@ -12,12 +9,14 @@ from scripts.utils import (
     is_testing_mode,
     log,
 )
-from scripts.data_structures.state_data import DataOrganizer, StateData
+from scripts.data_structures.data_organizer import DataOrganizer
 from scripts.multi_armed_bandit import MultiArmedBandit
 import bot_config
-import sys
 import warnings
 import telegram_send
+
+
+# TODO: clean this up
 
 def main():
     Bot().run()
@@ -55,6 +54,7 @@ class Bot(object):
         if self.maintenance_due():
             print("Entering bot maintenance mode...")
             self.data_organizer.maintenance()
+            self.multi_armed_bandit.maintenance()
             print("Maintenance done")
         else:
             pass
@@ -191,7 +191,7 @@ class Bot(object):
     def log_failure(self, _exception, msg=""):
         msg = "Operation failed\n"
         msg += f"The exception is\n{_exception}\n" + msg
-        telegram_send.send(messages= [msg])
+        telegram_send.send(messages=[msg])
         log(msg, bot_config.log_actions_path)
 
     def print_log_summary_with_balances_and_comment(self, comment=""):

@@ -5,7 +5,9 @@ import bot_config
 from bot_config import LOCAL_BLOCKCHAIN_ENVIRONMENTS
 
 
-"""General utility functions. Leter there are brownie-specific utilities"""
+"""----------------------------------------------------------------
+General utility functions. Leter there are brownie-specific utilities
+----------------------------------------------------------------"""
 
 
 def is_testing_mode():
@@ -76,7 +78,9 @@ def swap_if_true_flag(value0, value1, bool_flag):
         return value0, value1
 
 
-"""Brownie specific utility functions"""
+"""----------------------------------------------------------------
+Brownie specific utility functions
+----------------------------------------------------------------"""
 
 
 def get_latest_block_number():

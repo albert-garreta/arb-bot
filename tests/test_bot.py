@@ -1,6 +1,8 @@
 from brownie import interface
 
 
+# TODO: clean this up
+
 def test_run():
     from scripts.bot import Bot
     import bot_config

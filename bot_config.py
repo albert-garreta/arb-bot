@@ -3,6 +3,8 @@ from brownie.network.gas.strategies import ExponentialScalingStrategy
 from brownie import network, config
 import os
 
+# TODO: clean this up
+
 # network.gas_price(GethMempoolStrategy())
 
 NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS = ["development", "ganache"]
@@ -25,7 +27,7 @@ verbose = True
 telegram_notifications = True
 
 
-bandit_exploration_probability = 0.1
+bandit_exploration_probability = 1 / 3
 # names and decimals are filled furing preprocessing
 token_names = config["networks"][network.show_active()]["token_names"]
 decimals = []
@@ -68,14 +70,13 @@ loan_bounds = (0, max_value_of_flashloan)
 
 
 max_price_ratio = 0.995
-min_net_profits_in_usd = 3.5
+min_net_profits_in_usd = 1
 if network.show_active() in FTM_NETWORKS:
     # gas_strategy = "700 gwei"  # GasNowStrategy("fast")
     # gas_strategy = GasNowStrategy("rapid")
     gas_strategy = ExponentialScalingStrategy(
         "700 gwei", "1300 gwei", time_duration=0.4
     )
-
     min_net_profit = 1e18 * 1  # WFTM
     forced_tkn0_to_buy = 1e18 * 3.5 * 100 / lending_pool_fee
     forced_tkn1_to_sell = 1e18 * 7.7 * 100 / lending_pool_fee
@@ -99,11 +100,11 @@ else:
 blocks_to_wait = 0
 time_between_epoch_due_checks = 0
 
-directory = f"./logs/{network.show_active()}/"
-if not os.path.exists(directory):
-    os.makedirs(directory)
-log_actions_path = directory + f"action_logs.txt"
-log_searches_path = directory + f"searches_logs.txt"
+log_directory = f"./logs/{network.show_active()}/"
+if not os.path.exists(log_directory):
+    os.makedirs(log_directory)
+log_actions_path = log_directory + f"action_logs.txt"
+log_searches_path = log_directory + f"searches_logs.txt"
 
 
 bot_maintenance_epoch_frequency = 10 * 60 * 2  # every 10 minutes approx

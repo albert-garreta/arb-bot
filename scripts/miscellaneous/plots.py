@@ -3,7 +3,7 @@ import seaborn as sbn
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from scripts.prices import get_net_profit_v3
-from scripts.data_structures.state_data import StateData
+from scripts.data_structures.variable_pair_data import VariablePairData
 import bot_config
 import random
 from scripts.utils import fix_parameters_of_function, mult_list_by_scalar
@@ -73,7 +73,7 @@ def plot_final_profits():
     scale = 1
     amount_in_rndn = random.choices(range(0, 100, scale), k=number_points)
     amounts_out = []
-    arb_data = StateData(0,1)
+    arb_data = VariablePairData(0,1)
     arb_data.reserves = [
         mult_list_by_scalar([RESERVE00, RESERVE10], 1e18),
         mult_list_by_scalar([RESERVE01, RESERVE11], 1e18),
