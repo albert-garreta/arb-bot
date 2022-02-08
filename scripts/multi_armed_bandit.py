@@ -40,7 +40,7 @@ class MultiArmedBandit(object):
         )
 
     def update_choice_weights(self, _chosen_pair_data):
-        reward = self.compute_reward(_chosen_pair_data)
+        reward = compute_reward(_chosen_pair_data)
         x_ = np.zeros((self.num_bandits,))
         x_[self.last_choice - 1] = (
             reward / self.choice_probabilities[self.last_choice - 1]
@@ -51,17 +51,7 @@ class MultiArmedBandit(object):
         print("MultiArmedBandit choice weights:", self.choice_weights)
         print(f"MultiArmedBandit reward: {reward}")
 
-    @staticmethod
-    def compute_reward(_chosen_pair_data):
-        # Given a fully updated VariablePairData object, returns the reward for
-        # the MultiArmedBandit. This rewards represents how good of a choice the Pair
-        # fron the VariablePairData was.
-        cpd = _chosen_pair_data  # For readibility reasons
-        cpd.price_buy_dex = cpd.get_dex_price(cpd.reserves_buying_dex)
-        cpd.price_sell_dex = cpd.get_dex_price(cpd.reserves_selling_dex)
-        cpd.price_ratio = cpd.price_buy_dex / cpd.price_sell_dex
-        reward = cpd.net_profit / (1e18 * cpd.min_net_profit)
-        return reward
+
 
     def maintenance(self):
         # TODO: clean this up
@@ -99,3 +89,13 @@ class MultiArmedBandit(object):
                         "No matching token names and choice weights for "
                         "MultiArmedBandit found"
                     )
+def compute_reward(_chosen_pair_data):
+    # Given a fully updated VariablePairData object, returns the reward for
+    # the MultiArmedBandit. This rewards represents how good of a choice the Pair
+    # fron the VariablePairData was.
+    cpd = _chosen_pair_data  # For readibility reasons
+    cpd.price_buy_dex = cpd.get_dex_price(cpd.reserves_buying_dex)
+    cpd.price_sell_dex = cpd.get_dex_price(cpd.reserves_selling_dex)
+    cpd.price_ratio = cpd.price_buy_dex / cpd.price_sell_dex
+    reward = cpd.net_profit / (1e18 * cpd.min_net_profit)
+    return reward

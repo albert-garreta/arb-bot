@@ -1,5 +1,5 @@
 import bot_config
-from variable_pair_data import VariablePairData, dotdict
+from scripts.data_structures.variable_pair_data import VariablePairData, dotdict
 
 
 class DataOrganizer(dotdict):

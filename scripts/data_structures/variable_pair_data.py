@@ -193,7 +193,7 @@ class VariablePairData(StaticPairData):
         msg += f"Price selling dex: {self.price_sell_dex}\n"
         msg += f"Price ratio: {self.price_ratio}\n"
         msg += f"Buying dex index: {self.buy_dex_index}\n"
-        msg += f"Net profit: {self.net_profit_relu/1e18} ({round(self.net_profit/1e18,6)}) (Min: {round(self.min_net_profit,6)})\n"
+        msg += f"Net profit: {round(self.net_profit/1e18,6)} (Min: {round(self.min_net_profit,6)})\n"
         msg += f"Optimal borrow amount: {self.optimal_borrow_amount/1e18}\n"
         msg += addendum
         msg += "\n"

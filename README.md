@@ -1,6 +1,8 @@
 # UniswapV2-based Arbitrage bot
 
-This is a non-competitive arbitrage bot, not too different from others out there. I am currently in the process of refactoring and cleaning it up a little bit.
+This is a non-competitive arbitrage bot, not too different from others out there. It works with UniswapV2-type dexes on EVM-compatible chains.
+
+(This is a blockchain-related repository)
 
 ## General notes
 
@@ -8,6 +10,10 @@ This is a non-competitive arbitrage bot, not too different from others out there
 - The "sufficient difference" is the value that maximizes a certain convex function --see `prices.py` for more information--, and it depends on the dexes' reserves and their fees.
 - The bot leverages UniswapV2's flash-swaps so that the bot does not need to hold any tokens in order to operate.
 - It works as little as possible on the blockchain, externalizing as many computations as possible to the local machine running the bot.
+
+## Open issues
+
+- [UniswapV2: LOCKED (reentrancy error) coming out of nowhere at seemingly random occassions](https://github.com/albert-garreta/arb-bot/issues/1)
 
 ## Technical notes and usage information
 
@@ -23,4 +29,12 @@ This is a non-competitive arbitrage bot, not too different from others out there
 - The bot has the feature to send relevant notifications to a telegram bot. For this, one needs to configure `telegram-send` correctly. Telegram notifications can be deactivated in `bot_config.py` setting `telegram_notifications=False`.
 - The bot constantly inspects different pairs of tokens gathered from a given list of tokens. The number of pairs grows almost exponentially with the number of tokens. To try to solve this problem the bot implements an heuristic to increase the number of inspections dedicated to the most promising pairs among all
 possible pairs. This heuristic is given by the `Exp30` algorithm for Adversarial Multi Armed Bandits, see <https://en.wikipedia.org/wiki/Multi-armed_bandit>.
-_NOTE:_ the benefits of using this heuristic are dubious. I am quite sure that simply choosing pairs randomly would produce a similar performance. However the idea of optimizing the pair inspection mechanism is interesting.
+_NOTE:_ the benefits of using this heuristic are dubious. I am quite sure that simply choosing pairs randomly would produce a similar performance. However the idea of optimizing the pair inspection mechanism was interesting to me. 
+
+To deactivate the multi_armed_bandit heuristic set `bandit_exploration_probability=1` in `bot_config.py`
+
+
+## Easy improvements
+
+- Remove all the multi armed bandit functionality since its effect is probably close to none
+- Hardcode the optimization of the net profit function (this involves solving a quadratic equation by hand and hard-coding the solution)
