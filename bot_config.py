@@ -16,7 +16,7 @@ AVAX_NETWORKS = ["avax-main", "avax-main-fork"]
 MAIN_NETWORKS = ["ftm-main", "mainnet", "polygon-main"]
 
 passive_mode = False  # prevents making any blockchain transactions
-auto_reboot = True  # the bot reboots automatically in case of an error
+auto_reboot = False  # the bot reboots automatically in case of an error
 force_actions = False  # the bot engages in arbitrage regardless of the market conditions. Used for testing
 telegram_notifications = True  # the bot sends revelations notifications to a telegram bot. Uses `telegram_send``
 

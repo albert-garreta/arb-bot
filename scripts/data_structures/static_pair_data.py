@@ -1,6 +1,11 @@
 import bot_config
 from brownie import interface, config, network
-from scripts.utils import get_account, get_token_names_and_addresses, swap_if_true_flag
+from scripts.utils import (
+    get_account,
+    get_token_names_and_addresses,
+    swap_if_true_flag,
+    convert_to_wei,
+)
 import pycoingecko
 
 cg = pycoingecko.CoinGeckoAPI()
@@ -141,8 +146,8 @@ class StaticPairData(dotdict):
     def update_reserves_decimals(self, _reserve0, _reserve1):
         # Sets all reserves decimals to 18 (wei)
         decimals0, decimals1 = self.decimals
-        _reserve0 *= 10 ** (max(decimals0, decimals1) - decimals0)
-        _reserve1 *= 10 ** (max(decimals0, decimals1) - decimals1)
+        _reserve0 = convert_to_wei(_reserve0, decimals0)
+        _reserve1 = convert_to_wei(_reserve1, decimals1)
         return _reserve0, _reserve1
 
 

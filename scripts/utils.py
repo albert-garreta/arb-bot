@@ -6,7 +6,7 @@ from bot_config import LOCAL_BLOCKCHAIN_ENVIRONMENTS
 
 
 """----------------------------------------------------------------
-General utility functions. Leter there are brownie-specific utilities
+General utility functions. Later there are brownie-specific utilities
 ----------------------------------------------------------------"""
 
 
@@ -78,6 +78,14 @@ def swap_if_true_flag(value0, value1, bool_flag):
         return value0, value1
 
 
+def convert_from_wei(_amount, _new_decimals):
+    return _amount / 10 ** (18 - _new_decimals)
+
+
+def convert_to_wei(_amount, _old_decimals):
+    return _amount / 10 ** (_old_decimals - 18)
+
+
 """----------------------------------------------------------------
 Brownie specific utility functions
 ----------------------------------------------------------------"""
@@ -92,6 +100,10 @@ def get_latest_block_number():
         return latest_block_number
     except Exception as e:
         return e
+
+
+def get_address_list_from_contract_list(_contract_list):
+    return [c.address for c in _contract_list]
 
 
 def get_token_names_and_addresses():

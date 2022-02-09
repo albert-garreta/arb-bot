@@ -6,6 +6,8 @@ from scripts.utils import (
     auto_reboot,
     get_latest_block_number,
     log,
+    get_address_list_from_contract_list,
+    convert_from_wei,
 )
 from scripts.data_structures.data_organizer import DataOrganizer
 from scripts.multi_armed_bandit import MultiArmedBandit
@@ -52,10 +54,10 @@ class Bot(object):
 
     def run_epoch(self):
         # - 1st we choose a token pair (token0, token1)
-        # - 2nd (in `update_to_best_possible`) we choose which among 
+        # - 2nd (in `update_to_best_possible`) we choose which among
         #       dex0 and dex1 should be the
         #       dex were we borrow token1, and which where we sell it;
-        #       the former dex is referred to as the `buy_dex`, and the 
+        #       the former dex is referred to as the `buy_dex`, and the
         #       latter as the sell_dex`.
         #       Several additional data is recorded at this stage
         # - 3rd Console printing
@@ -63,40 +65,36 @@ class Bot(object):
         #       the bot logs it and engages in an arbitrage operation
         self.choose_and_set_token_pair()
         self.variable_pair_data.update_to_best_possible()
-        self.update_multi_armed_bandit()
+        # self.update_multi_armed_bandit() deactivate MAB
         self.variable_pair_data.set_summary_message()
         self.variable_pair_data.print_summary()
         if self.variable_pair_data.passes_requirements():
-            self.variable_pair_data.log_summary(bot_config.log_searches_path)
             return self.engage_in_arbitrage()
 
     """----------------------------------------------------------------
     Arbitrage operation methods
     ----------------------------------------------------------------"""
 
-    # TODO: clean this part up
-
     def engage_in_arbitrage(self):
+        # If in passive_mode, skips the function returning None
+        # Otherwise it logs information down and then attempts
+        # to perform an arbitrage operation.
+        # Returns the brownie transaction object if successful,
+        # otherwise it logs down information about the failure and
+        # raises an Exception
         if bot_config.passive_mode:
             return None
         self.log_pre_action()
         try:
             tx = self.flashloan_and_swap()
-            tx.wait(1)
-            # TODO: clean this tx logging and improve the way things are logged around here
-            # print(tx.info())
-            self.print_log_summary_with_balances_and_comment(tx.info())
-            tx2 = self.retrieve_profits()
-            tx2.wait(1)
-            self.log_post_action(tx.info())
-            return tx
+            self.handle_successful_arb()
         except Exception as e:
-            self.handle_failure(e)
+            self.handle_failed_arb(e)
 
     def flashloan_and_swap(self):
-        flashloan_args = self.get_flashloan_args()
+        self.get_flashloan_args()
         tx = self.bot_smartcontract.requestFlashLoanAndAct(
-            flashloan_args,
+            self.flashloan_args,
             {
                 "from": get_account(),
                 "gas_price": bot_config.gas_strategy,
@@ -106,32 +104,37 @@ class Bot(object):
         return tx
 
     def get_flashloan_args(self):
-        # Up to this point, we were working with wei regardless of the native decimal count of the tokens
-        # TODO: clean this up
+        """
+        Here we construct an instance of the struct `ArbData` from
+        `BotSmartContract``, which is the argument taken by the
+        function `requestFlashLoanAndAct``. The struct is:
+        struct ArbData {
+            address[] tokenAddresses;
+            address[] factoryAddresses;
+            address[] routerAddresses;
+            uint256 amountTkn1ToBorrow;
+            uint8 buyDexIndex;
+            uint8 sellDexIndex;
+            bool[] orderReversions;
+            uint256 buyDexFee;
+        }
+        NOTE: Up to this point, we were working with wei regardless of the
+        native decimal count of the tokens. We convert all necessary
+        amounts into their native decimal count, since these arguments
+        will be handled by UniswapV2's contracts.
+        """
+        data = self.variable_pair_data  # for readibility
         self.flashloan_args = (
-            self.variable_pair_data.token_addresses,
-            [f.address for f in self.variable_pair_data.dex_factories],
-            [r.address for r in self.variable_pair_data.dex_routers],
-            self.variable_pair_data.optimal_borrow_amount
-            / 10
-            ** (
-                18 - self.variable_pair_data.decimals[1]
-            ),  # Important: we must pass amounts in the native decimal number of the tokens
-            self.variable_pair_data.buy_dex_index,
-            self.variable_pair_data.sell_dex_index,
-            self.variable_pair_data.reversed_orders,
-            (
-                1000
-                - 10
-                * self.variable_pair_data.dex_fees[
-                    self.variable_pair_data.buy_dex_index
-                ]
-            ),
+            data.token_addresses,
+            get_address_list_from_contract_list(data.dex_factories),
+            get_address_list_from_contract_list(data.dex_routers),
+            convert_from_wei(data.optimal_borrow_amount, data.decimals[1]),
+            data.buy_dex_index,
+            data.sell_dex_index,
+            data.reversed_orders,
+            (1000 - 10 * data.dex_fees[data.buy_dex_index]),  # buyDexFee
         )
         return self.flashloan_args
-
-    def retrieve_profits(self):
-        return self.bot_smartcontract.sendAllFundsToOwner({"from": get_account()})
 
     """----------------------------------------------------------------
     Token Pair choice methods
@@ -152,7 +155,8 @@ class Bot(object):
         )
 
     def choose_pair(self):
-        self.multi_armed_bandit.update_choice_probs()
+        # Deactivated MAB
+        # self.multi_armed_bandit.update_choice_probs()
         self.multi_armed_bandit.choose()
 
     def get_token_name_pair_from_multi_armed_choice(self, _choice):
@@ -181,10 +185,10 @@ class Bot(object):
     """----------------------------------------------------------------
     Logging methods
     ----------------------------------------------------------------"""
-    
+
     # TODO: clean this part up
-    
-    def handle_failure(self, _exception):
+
+    def handle_failed_arb(self, _exception):
         self.variable_pair_data.set_summary_message(
             addendum=f"Info before the failure\n{self.flashloan_args}\n"
         )
@@ -202,7 +206,7 @@ class Bot(object):
         print(comment)
         log(comment, bot_config.log_actions_path)
 
-    def log_post_action(self, msg=""):
+    def handle_successful_arb(self, msg=""):
         msg = f"Success! Flashloan and swaps completed\n" + msg
         self.print_log_summary_with_balances_and_comment(msg)
 
