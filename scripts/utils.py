@@ -3,7 +3,7 @@ from datetime import datetime
 import sys
 import bot_config
 from bot_config import LOCAL_BLOCKCHAIN_ENVIRONMENTS
-
+import telegram_send
 
 """----------------------------------------------------------------
 General utility functions. Later there are brownie-specific utilities
@@ -20,6 +20,12 @@ def log(msg, path):
     msg = f"\n{datetime.now()}\n" + msg
     with open(path, "a") as f:
         f.write(msg)
+
+
+def full_log(msg, path):
+    print(msg)
+    telegram_send.send(messages=[msg])
+    log(msg, bot_config.log_actions_path)
 
 
 def mult_list_by_scalar(_list, _scalar):

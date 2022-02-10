@@ -125,6 +125,10 @@ class VariablePairData(StaticPairData):
     ):
         self.optimal_borrow_amount = optimal_borrow_amount
         self.net_profit = net_profit
+        # These are used for logging only
+        self.price_buy_dex = self.get_dex_price(self.reserves_buying_dex)
+        self.price_sell_dex = self.get_dex_price(self.reserves_selling_dex)
+        self.price_ratio = self.price_buy_dex / self.price_sell_dex
 
     """----------------------------------------------------------------
     Methods to decide which dex should be the buy dex and which should be the sell dex
@@ -182,35 +186,24 @@ class VariablePairData(StaticPairData):
     Logging methods
     ----------------------------------------------------------------"""
 
-    # TODO: clean this part up
-
     def set_summary_message(self, addendum=""):
+        reserves_buy_converted = mult_list_by_scalar(self.reserves_buying_dex, 1e-18)
+        reserves_sell_converted = mult_list_by_scalar(self.reserves_selling_dex, 1e-18)
+        net_profit_converted = round(self.net_profit / 1e18, 6)
+        min_net_profit_converted = round(self.min_net_profit / 6)
         msg = f"{self.token_names}\n"
         # Maybe too expenive: msg += f"Block number: {get_latest_block_number()}\n"
-        msg += f"Reserves buying dex: {mult_list_by_scalar(self.reserves_buying_dex,1e-18)}\n"
-        msg += f"Reserves selling dex: {mult_list_by_scalar(self.reserves_selling_dex,1e-18)}\n"
+        msg += f"Reserves buying dex: {reserves_buy_converted}\n"
+        msg += f"Reserves selling dex: {reserves_sell_converted}\n"
         msg += f"Price buying dex: {self.price_buy_dex}\n"
         msg += f"Price selling dex: {self.price_sell_dex}\n"
         msg += f"Price ratio: {self.price_ratio}\n"
         msg += f"Buying dex index: {self.buy_dex_index}\n"
-        msg += f"Net profit: {round(self.net_profit/1e18,6)} (Min: {round(self.min_net_profit,6)})\n"
+        msg += f"Net profit: {net_profit_converted} (Min: {min_net_profit_converted})\n"
         msg += f"Optimal borrow amount: {self.optimal_borrow_amount/1e18}\n"
         msg += addendum
         msg += "\n"
         self.summary_message = msg
-
-    def print_summary(self):
-        print(self.summary_message)
-
-    def log_summary(self, path):
-        msg = self.summary_message
-        if bot_config.telegram_notifications:
-            telegram_send.send(messages=[msg])
-        log(msg, path)
-
-    def print_and_log_summary(self, path):
-        self.print_summary()
-        self.log_summary(path)
 
     """----------------------------------------------------------------
     Price utilities

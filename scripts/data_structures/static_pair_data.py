@@ -11,6 +11,10 @@ import pycoingecko
 cg = pycoingecko.CoinGeckoAPI()
 
 
+class NonExistingLPException(Exception):
+    """Raised when an LP is not found in a DEX"""
+    pass 
+
 class dotdict(dict):
     """Any class inheriting from this will be a dictionary whose attributes can be accessed with .dot notation"""
 
@@ -99,7 +103,13 @@ class StaticPairData(dotdict):
         pair_address = self.dex_factories[_dex_index].getPair(
             *self.token_addresses, {"from": account}
         )
-        pair = interface.IUniswapV2Pair(pair_address)
+        try:
+            pair = interface.IUniswapV2Pair(pair_address)
+        except:
+            raise NonExistingLPException(
+                f"No LP found in dex {bot_config.dex_names[_dex_index]} "
+                f"for the pair {self.token_names}"
+            )
         reversed_order = order_has_reversed(self.token_addresses, pair)
         return pair, reversed_order
 
@@ -184,7 +194,6 @@ def get_all_dexes_and_factories(_dex_list):
 def get_dex_router_and_factory(_dex_name):
     network_addresses = config["networks"][network.show_active()]
     dex_addresses = network_addresses["dexes"][_dex_name]
-    # TODO: (minor detail) Do I need to instantiate them, or would it be enough to just pass the address?
     router = interface.IUniswapV2Router02(dex_addresses["swap_router_V2_address"])
     factory = interface.IUniswapV2Factory(dex_addresses["uniswap_factory_address"])
     return router, factory

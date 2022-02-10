@@ -1,5 +1,6 @@
 import bot_config
 from scripts.data_structures.variable_pair_data import VariablePairData, dotdict
+from scripts.data_structures.static_pair_data import NonExistingLPException
 
 
 class DataOrganizer(dotdict):
@@ -45,17 +46,22 @@ class DataOrganizer(dotdict):
     def set_up_VariablePairData(self, index0, index1):
         # We expect this function to fail in some cases: this is because
         # not all pairs exist as an LP in both dexes. In this case the
-        # function we get an Exception.
-        # TODO: This is not an optimal solution since it can obfuscate
-        # actually important exceptions
+        # we get a custom exception NonExistingLPException, which we 
+        # print but we do not raise. If some other exception occurs then
+        # we raise it.
         try:
-            print(
-                f"Setting up VariablePairData for the token pair {index0}_{index1}..."
+            name0, name1 = (
+                bot_config.token_names[index0],
+                bot_config.token_names[index1],
             )
+            print(f"Setting up VariablePairData for the token pair {name0}_{name1}...")
             self._set_up_VariablePairData(index0, index1)
             print("Set up done\n")
         except Exception as e:
-            print(f"Setting up failed. Ignoring pair.\nThe exception was:\n{e}\n")
+            if type(e) is NonExistingLPException:
+                print(f"Setting up failed. Ignoring pair.\nThe exception was:\n{e}\n")
+            else:
+                raise e
 
     def _set_up_VariablePairData(self, index0, index1):
         str_pair = get_index_pair_to_str_form(index0, index1)

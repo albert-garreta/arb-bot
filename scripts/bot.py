@@ -8,12 +8,12 @@ from scripts.utils import (
     log,
     get_address_list_from_contract_list,
     convert_from_wei,
+    full_log,
 )
 from scripts.data_structures.data_organizer import DataOrganizer
 from scripts.multi_armed_bandit import MultiArmedBandit
 import bot_config
 import warnings
-import telegram_send
 
 
 def main():
@@ -97,7 +97,7 @@ class Bot(object):
             self.flashloan_args,
             {
                 "from": get_account(),
-                "gas_price": bot_config.gas_strategy,
+                # "gas_price": bot_config.gas_strategy,
             },
         )
         tx.wait(1)
@@ -107,17 +107,12 @@ class Bot(object):
         """
         Here we construct an instance of the struct `ArbData` from
         `BotSmartContract``, which is the argument taken by the
-        function `requestFlashLoanAndAct``. The struct is:
-        struct ArbData {
-            address[] tokenAddresses;
-            address[] factoryAddresses;
-            address[] routerAddresses;
-            uint256 amountTkn1ToBorrow;
-            uint8 buyDexIndex;
-            uint8 sellDexIndex;
-            bool[] orderReversions;
-            uint256 buyDexFee;
-        }
+        function `requestFlashLoanAndAct``. The struct consists in:
+
+        tokenAddresses; factoryAddresses; routerAddresses;
+        amountTkn1ToBorrow; buyDexIndex; sellDexIndex;
+        orderReversions; buyDexFee;
+
         NOTE: Up to this point, we were working with wei regardless of the
         native decimal count of the tokens. We convert all necessary
         amounts into their native decimal count, since these arguments
@@ -186,45 +181,37 @@ class Bot(object):
     Logging methods
     ----------------------------------------------------------------"""
 
-    # TODO: clean this part up
-
-    def handle_failed_arb(self, _exception):
-        self.variable_pair_data.set_summary_message(
-            addendum=f"Info before the failure\n{self.flashloan_args}\n"
-        )
-        self.variable_pair_data.print_and_log_summary(path=bot_config.log_actions_path)
-        self.variable_pair_data.update_to_best_possible()
-        self.variable_pair_data.set_summary_message(
-            addendum=f"Info after failure\n{self.flashloan_args}\n"
-        )
-        self.variable_pair_data.print_and_log_summary(path=bot_config.log_actions_path)
-        self.log_failure(_exception)
-        raise _exception
-
     def log_pre_action(self):
-        comment = f"\n\n\nNEW ACTION: Requesting flashloan and swapping...\n"
-        print(comment)
-        log(comment, bot_config.log_actions_path)
+        msg = f"\n\n\nNEW ACTION: Requesting flashloan and swapping...\n"
+        full_log(msg, bot_config.log_actions_path)
 
     def handle_successful_arb(self, msg=""):
         msg = f"Success! Flashloan and swaps completed\n" + msg
-        self.print_log_summary_with_balances_and_comment(msg)
+        full_log(msg, bot_config.log_actions_path)
 
-    def log_failure(self, _exception, msg=""):
-        msg = "Operation failed\n"
-        msg += f"The exception is\n{_exception}\n" + msg
-        telegram_send.send(messages=[msg])
-        log(msg, bot_config.log_actions_path)
+    def log_failure(self, _exception):
+        msg = f"Operation failed\nThe exception is\n{_exception}\n"
+        full_log(msg, bot_config.log_actions_path)
 
-    def print_log_summary_with_balances_and_comment(self, comment=""):
-        # TODO: create separate class for logging
-        actor_pre_loan_balance = self.get_balances(self.bot_smartcontract.address)
-        caller_pre_loan_balance = self.get_balances(get_account())
-        msg = f"Actor balances: {actor_pre_loan_balance}\n"
-        msg += f"Caller balances: {caller_pre_loan_balance}\n"
-        msg += comment
-        self.variable_pair_data.set_summary_message(addendum=msg)
-        self.variable_pair_data.print_and_log_summary(path=bot_config.log_actions_path)
+    def handle_failed_arb(self, _exception):
+        # TODO: clean this function up
+
+        # We first log the summary message with the data collected before the
+        # failure.
+        self.variable_pair_data.set_summary_message(
+            addendum=f"Info before the failure\n{self.flashloan_args}\n"
+        )
+        full_log(self.variable_pair_data.summary_message, bot_config.log_actions_path)
+
+        # Next we update the varables_pair_data. After this call the object will
+        # contain all the data after the failure
+        self.variable_pair_data.update_to_best_possible()
+        # Now we log a new summary message with the new data
+        self.variable_pair_data.set_summary_message(
+            addendum=f"Info after failure\n{self.flashloan_args}\n"
+        )
+        full_log(self.variable_pair_data.summary_message, bot_config.log_actions_path)
+        raise _exception
 
 
 def epoch_due(block_number):

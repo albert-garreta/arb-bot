@@ -3,7 +3,7 @@ from brownie import BotSmartContract
 
 
 def get_BotSmartContract():
-    print(f"Deploying BotSmartContract... (length {len(BotSmartContract)})")
+    print("Deploying BotSmartContract...")
     if len(BotSmartContract) > 0:
         print("BotSmartContract was already deployed")
         return BotSmartContract[-1]

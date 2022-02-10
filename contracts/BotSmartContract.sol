@@ -29,7 +29,11 @@ contract BotSmartContract is Ownable, IUniswapV2Callee {
     // I was getting reentrancy errors from UniswapV2Pair(?) (The UniswapV2: LOCKED error).
     // I put this modifier in the main function requestFlashLoanAndAct to
     // see if this helps
-    // TODO: this didn't fix it. What is happebing?
+    // TODO: this didn't fix it. What is happening?
+    // UPDATE 10 feb 2022: I think it occurs when a previous 
+    // `requestFlashLoanAndAct`
+    // was called and its tx was reverted 
+    // after some time waiting in the mempool
     uint8 private unlocked = 1;
     modifier lock() {
         require(unlocked == 1, "BotSmartContract is Locked");
