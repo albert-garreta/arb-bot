@@ -28,9 +28,9 @@ def test_run_epoch():
     bot = Bot()
 
     bot.choose_and_set_token_pair()
-    bot.state_data.update_to_best_possible()
+    bot.variable_pair_data.update_to_best_possible()
 
-    wrapped_main_token = interface.IWERC20(bot.state_data.token_addresses[0])
+    wrapped_main_token = interface.IWERC20(bot.variable_pair_data.token_addresses[0])
     amount_to_transfer = 0.66 *get_account().balance()
     wrapped_main_token.deposit({"from": get_account(), "value": amount_to_transfer})
     wrapped_main_token.transfer(
@@ -40,7 +40,7 @@ def test_run_epoch():
     balance_bot = wrapped_main_token.balanceOf(bot.bot_smartcontract.address)
     assert(balance_bot == amount_to_transfer, f"{balance_bot}_{amount_to_transfer}")
     print(f"Bot balance: {balance_bot/1e18}")
-    bot.update_multi_armed_bandit()
-    bot.state_data.set_summary_message()
-    bot.state_data.print_summary()
-    return bot.act_test()
+    #bot.update_multi_armed_bandit()
+    bot.variable_pair_data.set_summary_message()
+    print(bot.variable_pair_data.summary_message)
+    return bot.engage_in_arbitrage()

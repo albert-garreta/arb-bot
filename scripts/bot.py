@@ -67,7 +67,7 @@ class Bot(object):
         self.variable_pair_data.update_to_best_possible()
         # self.update_multi_armed_bandit() deactivate MAB
         self.variable_pair_data.set_summary_message()
-        self.variable_pair_data.print_summary()
+        print(self.variable_pair_data.summary_message)
         if self.variable_pair_data.passes_requirements():
             return self.engage_in_arbitrage()
 
@@ -97,7 +97,7 @@ class Bot(object):
             self.flashloan_args,
             {
                 "from": get_account(),
-                # "gas_price": bot_config.gas_strategy,
+              # "gas_price": "10 gwei",
             },
         )
         tx.wait(1)
@@ -211,6 +211,7 @@ class Bot(object):
             addendum=f"Info after failure\n{self.flashloan_args}\n"
         )
         full_log(self.variable_pair_data.summary_message, bot_config.log_actions_path)
+        self.log_failure(_exception)
         raise _exception
 
 

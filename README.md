@@ -11,10 +11,6 @@ This is a non-competitive arbitrage bot, not too different from others out there
 - The bot leverages UniswapV2's flash-swaps so that the bot does not need to hold any tokens in order to operate.
 - It works as little as possible on the blockchain, externalizing as many computations as possible to the local machine running the bot.
 
-## Open issues
-
-- [UniswapV2: LOCKED (reentrancy error) coming out of nowhere at seemingly random occassions](https://github.com/albert-garreta/arb-bot/issues/1)
-
 ## Technical notes and usage information
 
 - The bot has been partially tested only. It is not meant to be used for competitive arbitrage.
@@ -33,8 +29,6 @@ _NOTE:_ the benefits of using this heuristic are dubious. I am quite sure that s
 
 To deactivate the multi_armed_bandit heuristic set `bandit_exploration_probability=1` in `bot_config.py`
 
+## Open issues
 
-## Easy improvements
-
-- Remove all the multi armed bandit functionality since its effect is probably close to none
-- Hardcode the optimization of the net profit function (this involves solving a quadratic equation by hand and hard-coding the solution)
+- [UniswapV2: LOCKED (reentrancy error) coming out of nowhere at seemingly random occassions](https://github.com/albert-garreta/arb-bot/issues/1)

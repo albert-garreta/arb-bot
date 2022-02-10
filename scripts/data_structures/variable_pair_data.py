@@ -3,15 +3,12 @@ import bot_config
 from scripts.data_structures.static_pair_data import dotdict, StaticPairData
 from scripts.prices import get_net_profit_v3
 from scripts.utils import (
-    log,
     mult_list_by_scalar,
     fix_parameters_of_function,
     reverse_scalar_fun,
 )
 import numpy as np
 from scipy.optimize import minimize_scalar
-from brownie import chain
-import telegram_send
 from pycoingecko import CoinGeckoAPI
 
 cg = CoinGeckoAPI()
@@ -189,8 +186,8 @@ class VariablePairData(StaticPairData):
     def set_summary_message(self, addendum=""):
         reserves_buy_converted = mult_list_by_scalar(self.reserves_buying_dex, 1e-18)
         reserves_sell_converted = mult_list_by_scalar(self.reserves_selling_dex, 1e-18)
-        net_profit_converted = round(self.net_profit / 1e18, 6)
-        min_net_profit_converted = round(self.min_net_profit / 6)
+        net_profit_converted = self.net_profit / 1e18
+        optimal_borrow_amount_converted = self.optimal_borrow_amount / 1e18
         msg = f"{self.token_names}\n"
         # Maybe too expenive: msg += f"Block number: {get_latest_block_number()}\n"
         msg += f"Reserves buying dex: {reserves_buy_converted}\n"
@@ -199,8 +196,8 @@ class VariablePairData(StaticPairData):
         msg += f"Price selling dex: {self.price_sell_dex}\n"
         msg += f"Price ratio: {self.price_ratio}\n"
         msg += f"Buying dex index: {self.buy_dex_index}\n"
-        msg += f"Net profit: {net_profit_converted} (Min: {min_net_profit_converted})\n"
-        msg += f"Optimal borrow amount: {self.optimal_borrow_amount/1e18}\n"
+        msg += f"Net profit: {net_profit_converted} (Min: {self.min_net_profit})\n"
+        msg += f"Optimal borrow amount: {optimal_borrow_amount_converted}\n"
         msg += addendum
         msg += "\n"
         self.summary_message = msg
