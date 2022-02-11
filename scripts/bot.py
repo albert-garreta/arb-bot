@@ -5,7 +5,6 @@ from scripts.utils import (
     get_account,
     auto_reboot,
     get_latest_block_number,
-    log,
     get_address_list_from_contract_list,
     convert_from_wei,
     full_log,
@@ -21,10 +20,8 @@ def main():
 
 
 class Bot(object):
-    """This is the main class of the repository. Everything gets moving by executing its `run` method."""
+    """This is the main class of the repository. Everything gets moving by executing its `run` method."""∫
 
-    # TODO: Explain what an arbitrage operation exactly consists of using this repository's notation
-    # (already partially implicitly explained in the data structures classes) and here in run_epoch
 
     def __init__(self):
         # Stores a deployed BotSmartContract
@@ -69,6 +66,7 @@ class Bot(object):
         self.variable_pair_data.set_summary_message()
         print(self.variable_pair_data.summary_message)
         if self.variable_pair_data.passes_requirements():
+            self.log_pre_action()
             return self.engage_in_arbitrage()
 
     """----------------------------------------------------------------
@@ -81,15 +79,16 @@ class Bot(object):
         # to perform an arbitrage operation.
         # Returns the brownie transaction object if successful,
         # otherwise it logs down information about the failure and
-        # raises an Exception
-        if bot_config.passive_mode:
-            return None
-        self.log_pre_action()
+        # raises an Exception and returns None
         try:
-            tx = self.flashloan_and_swap()
-            self.handle_successful_arb()
+            return self._engage_in_arbitrage()
         except Exception as e:
-            self.handle_failed_arb(e)
+            return self.handle_failed_arb(e)
+
+    def _engage_in_arbitrage(self):
+        tx = self.flashloan_and_swap()
+        self.handle_successful_arb()
+        return tx
 
     def flashloan_and_swap(self):
         self.get_flashloan_args()
@@ -97,7 +96,7 @@ class Bot(object):
             self.flashloan_args,
             {
                 "from": get_account(),
-              # "gas_price": "10 gwei",
+                # "gas_price": "10 gwei",
             },
         )
         tx.wait(1)
@@ -189,30 +188,29 @@ class Bot(object):
         msg = f"Success! Flashloan and swaps completed\n" + msg
         full_log(msg, bot_config.log_actions_path)
 
-    def log_failure(self, _exception):
-        msg = f"Operation failed\nThe exception is\n{_exception}\n"
-        full_log(msg, bot_config.log_actions_path)
-
     def handle_failed_arb(self, _exception):
-        # TODO: clean this function up
-
-        # We first log the summary message with the data collected before the
-        # failure.
+        self.log_data_before_failure()
+        self.log_data_after_failure()
+        self.log_exception_failure(_exception)
+        raise _exception
+    
+    def log_data_before_failure(self):
         self.variable_pair_data.set_summary_message(
             addendum=f"Info before the failure\n{self.flashloan_args}\n"
         )
         full_log(self.variable_pair_data.summary_message, bot_config.log_actions_path)
 
-        # Next we update the varables_pair_data. After this call the object will
-        # contain all the data after the failure
+    def log_data_after_failure(self):
         self.variable_pair_data.update_to_best_possible()
-        # Now we log a new summary message with the new data
         self.variable_pair_data.set_summary_message(
             addendum=f"Info after failure\n{self.flashloan_args}\n"
         )
         full_log(self.variable_pair_data.summary_message, bot_config.log_actions_path)
-        self.log_failure(_exception)
-        raise _exception
+    
+    def log_exception_failure(self, _exception):
+        msg = f"Operation failed\nThe exception is\n{_exception}\n"
+        full_log(msg, bot_config.log_actions_path)
+
 
 
 def epoch_due(block_number):

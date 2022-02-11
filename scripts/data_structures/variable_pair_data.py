@@ -77,6 +77,7 @@ class VariablePairData(StaticPairData):
         requirement = True
         requirement = requirement and self.net_profit / 1e18 > self.min_net_profit
         requirement = requirement and self.optimal_borrow_amount > 0
+        requirement = requirement and not bot_config.passive_mode
         requirement = requirement or bot_config.force_actions
         return requirement
 

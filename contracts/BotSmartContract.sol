@@ -30,9 +30,9 @@ contract BotSmartContract is Ownable, IUniswapV2Callee {
     // I put this modifier in the main function requestFlashLoanAndAct to
     // see if this helps
     // TODO: this didn't fix it. What is happening?
-    // UPDATE 10 feb 2022: I think it occurs when a previous 
+    // UPDATE 10 feb 2022: This seems to occur when a previous
     // `requestFlashLoanAndAct`
-    // was called and its tx was reverted 
+    // was called and its tx was reverted
     // after some time waiting in the mempool
     uint8 private unlocked = 1;
     modifier lock() {
@@ -47,6 +47,7 @@ contract BotSmartContract is Ownable, IUniswapV2Callee {
     // For debugging purposes: currently not in use
     event LogBalancesAndDebts(
         uint256 indexed contractBalToken0,
+        uint256 indexed ownerBalToken0,
         uint256 indexed actualAmountTkn0ToReturn
     );
 
@@ -162,10 +163,20 @@ contract BotSmartContract is Ownable, IUniswapV2Callee {
             data.amountTkn1ToBorrow,
             data
         );
-        emit LogBalancesAndDebts(tokens[0].balanceOf(address(this)), actualAmountTkn0ToReturn);
+        emit LogBalancesAndDebts(
+            tokens[0].balanceOf(address(this)),
+            tokens[0].balanceOf(address(msg.sender)),
+            actualAmountTkn0ToReturn
+        );
         // Avoid these checks for gas savings
         // uniswapV2CallCheckPostRequisites(actualAmountTkn0ToReturn);
         returnFundsToPair(actualAmountTkn0ToReturn, data.buyDexIndex);
+
+        emit LogBalancesAndDebts(
+            tokens[0].balanceOf(address(this)),
+            tokens[0].balanceOf(address(msg.sender)),
+            actualAmountTkn0ToReturn
+        );
     }
 
     function normalSwap(uint256 _amountBorrowed, ArbData memory _data) public {

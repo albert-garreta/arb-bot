@@ -1,12 +1,8 @@
 from brownie import interface
 
 
-# TODO: clean this up
-
 def test_run():
     from scripts.bot import Bot
-    import bot_config
-    from brownie import interface
 
     bot = Bot()
     bot.testing = True
@@ -31,16 +27,16 @@ def test_run_epoch():
     bot.variable_pair_data.update_to_best_possible()
 
     wrapped_main_token = interface.IWERC20(bot.variable_pair_data.token_addresses[0])
-    amount_to_transfer = 0.66 *get_account().balance()
+    amount_to_transfer = 0.66 * get_account().balance()
     wrapped_main_token.deposit({"from": get_account(), "value": amount_to_transfer})
     wrapped_main_token.transfer(
         bot.bot_smartcontract.address, amount_to_transfer, {"from": get_account()}
     )
 
     balance_bot = wrapped_main_token.balanceOf(bot.bot_smartcontract.address)
-    assert(balance_bot == amount_to_transfer, f"{balance_bot}_{amount_to_transfer}")
+    assert (balance_bot == amount_to_transfer, f"{balance_bot}_{amount_to_transfer}")
     print(f"Bot balance: {balance_bot/1e18}")
-    #bot.update_multi_armed_bandit()
     bot.variable_pair_data.set_summary_message()
     print(bot.variable_pair_data.summary_message)
-    return bot.engage_in_arbitrage()
+    tx = bot.engage_in_arbitrage()
+    print(tx.info())
