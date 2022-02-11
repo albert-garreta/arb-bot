@@ -4,8 +4,6 @@ This is a non-competitive arbitrage bot, not too different from others out there
 
 (This is a blockchain-related repository)
 
-//TODO: Polish
-
 ## General notes
 
 - The bot scans for different pairs (`token0`, `token1`) on different UniswapV2-based dexes (decentralized exchanges) and trades accordingly when the price of `token1` with respect to `token0` among two different dexes is "sufficiently different". More precisely, when the price of `token1` is significantly cheaper on `dex0` than on `dex1`, the bot uses UniswapV2's flashloan to borrow a acertain amount `x` of `token1` from `dex0` (technically, it borrows it from the `token0/token1` LP in `dex0`). Then sells the loaned `token1`'s on `dex1`, and returns the loan value to `dex0`.
@@ -16,9 +14,11 @@ This is a non-competitive arbitrage bot, not too different from others out there
 - The bot leverages UniswapV2's flash-swaps so that the bot does not need to hold any tokens in order to operate (except for paying for transaction fees).
 - It works as little as possible on the blockchain, externalizing as many computations as possible to the local machine running the bot.
 
+- This bot is similar to many open-sourced bots. It will not be competitive and one should not expect to obtain gains from running it. I wrote it as an exercise on smartcontract development.
+
+
 ## Technical notes and usage information
 
-- This bot is similar to many open-sourced bots. It will not be competitive and one should not expect to obtain gains from running it.
 - The bot has been partially tested only. 
 - The bot runs on brownie's framework. To run it do: > `brownie run/scripts/bot.py --network [network-name]`
 - It is required to have brownie installed. The code at this point expects to find the account's private key and other necessary information (such as, depending on the network to be used, an Infura Project ID) in a `.env` file.
