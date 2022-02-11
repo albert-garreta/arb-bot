@@ -5,7 +5,7 @@ This is a non-competitive arbitrage bot, not too different from others out there
 (This is a blockchain-related repository)
 
 ## General notes
-
+- This bot is similar to many open-sourced bots. It will not be competitive due to saturation of the space, and one should not expect to obtain gains from running it. I wrote it as an exercise on smartcontract development.
 - The bot scans for different pairs (`token0`, `token1`) on different UniswapV2-based dexes (decentralized exchanges) and trades accordingly when the price of `token1` with respect to `token0` among two different dexes is "sufficiently different". More precisely, when the price of `token1` is significantly cheaper on `dex0` than on `dex1`, the bot uses UniswapV2's flashloan to borrow a acertain amount `x` of `token1` from `dex0` (technically, it borrows it from the `token0/token1` LP in `dex0`). Then sells the loaned `token1`'s on `dex1`, and returns the loan value to `dex0`.
 - The "certain amount `x`" is the value that maximizes a certain convex function --see `prices.py` for more information--, and it depends on the dexes' reserves and their fees. If the prices between `dex0` and `dex1` are not sufficiently different, this value is negative and arbitrage cannot be profitable.
 - NOTE: Someone may wonder why, if there is a price difference sufficient to compensate for the fees, not borrow as much `token1` as possible? The reason for this is essentially that, in UniswapV2 dexes, the amount of `token0` one gets by exchanging `token1` for `token0` is given by the following formula:
@@ -13,8 +13,6 @@ This is a non-competitive arbitrage bot, not too different from others out there
     This tends to 1 as `amount_token` tends to infinity. These type of formulas come from the so-called $x*y\geq k$ equation.
 - The bot leverages UniswapV2's flash-swaps so that the bot does not need to hold any tokens in order to operate (except for paying for transaction fees).
 - It works as little as possible on the blockchain, externalizing as many computations as possible to the local machine running the bot.
-
-- This bot is similar to many open-sourced bots. It will not be competitive and one should not expect to obtain gains from running it. I wrote it as an exercise on smartcontract development.
 
 
 ## Technical notes and usage information
