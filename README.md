@@ -32,7 +32,3 @@ _NOTE:_ in hindsight, the benefits of using this heuristic are dubious. I am qui
 
 To deactivate the multi_armed_bandit heuristic set `bandit_exploration_probability=1` in `bot_config.py`
 
-## Open issues
-
-[UniswapV2: LOCKED (reentrancy error) coming out of nowhere at seemingly random occassions](https://github.com/albert-garreta/arb-bot/issues/1) 
-UPDATE: It seems this occurs after a previous transaction errored out.
