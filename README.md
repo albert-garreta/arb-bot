@@ -10,6 +10,8 @@ This is a non-competitive arbitrage bot, not too different from others out there
 - The "certain amount `x`" is the value that maximizes a certain convex function --see `prices.py` for more information--, and it depends on the dexes' reserves and their fees. If the prices between `dex0` and `dex1` are not sufficiently different, this value is negative and arbitrage cannot be profitable.
 - NOTE: Someone may wonder why, if there is a price difference sufficient to compensate for the transaction fees, not borrow as much `token1` as possible? The reason for this is essentially that, in UniswapV2 dexes, the amount of `token0` one gets by exchanging `token1` for `token0` is given by the following formula:
     <img src="https://render.githubusercontent.com/render/math?mathamount\_token1* (1-fees) \frac{ reserves\_token0 } { reserves\_token1 + amount\_token1*(1-fees) }">
+    <img src="https://latex.codecogs.com/gif.latex?amount\_token1* (1-fees) \frac{ reserves\_token0 } { reserves\_token1 + amount\_token1*(1-fees) } " /> 
+
     This tends to 1 as `amount_token` tends to infinity. These type of formulas come from the so-called $x*y\geq k$ equation.
 - The bot leverages UniswapV2's flash-swaps so that the bot does not need to hold any tokens in order to operate (except for paying for transaction fees).
 - It works as little as possible on the blockchain, externalizing as many computations as possible to the local machine running the bot.
